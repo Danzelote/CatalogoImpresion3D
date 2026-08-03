@@ -22,7 +22,7 @@ Google Sheet (Productos + Pedidos)
 
 ## Paso 1 — Crear el Google Sheet
 
-Crea un Sheet nuevo con **dos pestañas**:
+Crea un Sheet nuevo con **tres pestañas**: Productos, Colores y Pedidos.
 
 ### Pestaña "Productos"
 
@@ -30,14 +30,31 @@ Crea un Sheet nuevo con **dos pestañas**:
 |---|---|---|---|---|---|---|---|---|
 | Dragón articulado | *(se genera solo)* | dragon-1.jpg | dragon-2.jpg | | Dragón articulado impreso en PLA, 25cm | 350 | Figuras, Fantasía | si |
 
-- **SKU**: déjalo vacío al agregar un producto nuevo — lo generas con un clic (ver paso 3).
-- **Foto1/2/3**: puedes poner solo el nombre del archivo (si subes las fotos al repo, ver paso 4) o una URL completa (`https://...`).
+- **SKU**: déjalo vacío al agregar un producto nuevo. En cuanto escribas el Nombre, se genera solo (ver paso 2). Si tienes productos viejos sin SKU, corre **Catálogo 3D > Generar SKUs faltantes** una vez para rellenarlos todos.
+- **Foto1/2/3**: escribe el nombre **completo del archivo, con extensión**, exactamente igual a como lo subiste (mayúsculas/minúsculas incluidas): `TorreDadosPortatil_01.jpg`, no `TorreDadosPortatil_01`. GitHub Pages distingue mayúsculas de minúsculas, así que `Foto.JPG` y `foto.jpg` son archivos distintos para él. También puedes pegar una URL completa (`https://...`) si prefieres otro hosting.
 - **Categorias**: escribe una o varias separadas por coma, ej. `Figuras, Fantasía`. Las etiquetas nuevas aparecen solas en la web, no hay que tocar código.
 - **Activo**: pon `no` para ocultar un producto sin borrarlo.
 
+### Pestaña "Colores" (opcional — galería de colores de filamento)
+
+| Color | Foto | Disponible |
+|---|---|---|
+| Rojo | rojo.jpg | si |
+| Azul cielo | azul-cielo.jpg | no |
+
+- **Foto**: igual que en Productos, nombre de archivo con extensión o URL completa. Sube las fotos de los carretes a la misma carpeta `fotos/`.
+- **Disponible**: `si` o `no`. Los que digas `no` se muestran en gris con la etiqueta "Agotado", sin necesidad de borrarlos.
+- Si no vas a usar esta sección todavía, no pasa nada: la web simplemente no la muestra si la pestaña está vacía o no existe.
+
 ### Pestaña "Pedidos"
 
-No la llenes a mano — se crea y se llena sola la primera vez que alguien ordena (o dale clic a **Catálogo 3D > Preparar hoja de Pedidos** en el menú del Sheet).
+No la llenes a mano. Para verla lista desde ya, corre **Catálogo 3D > Preparar hoja de Pedidos** en el menú del Sheet (aparece después del paso 2). Si no la preparas manualmente, se crea sola en cuanto llega el primer pedido real. Sus columnas son:
+
+| Número de orden | Fecha | Productos | Total |
+|---|---|---|---|
+| 000001 | 03/08/2026 10:15 | Torre de dados (SKU: P-4K9QZ) x1, Dragón (SKU: P-88XJ2) x2 | $1050 |
+
+No necesitas tocar esta pestaña — el Apps Script del paso 2 es quien escribe ahí cada vez que alguien da clic en "Ordenar por WhatsApp".
 
 ### Hazlo visible
 
@@ -54,7 +71,7 @@ No la llenes a mano — se crea y se llena sola la primera vez que alguien orden
    - Quién tiene acceso: **Cualquier usuario**
 5. Autoriza los permisos cuando te los pida (es tu propio script, es seguro).
 6. Copia la **URL de la aplicación web** que te da — la vas a pegar en `script.js`.
-7. Recarga el Sheet. Ahora verás un menú **Catálogo 3D** arriba. Úsalo para generar SKUs cuando agregues productos.
+7. Recarga el Sheet. Ahora verás un menú **Catálogo 3D** arriba, y desde ese momento el SKU se genera solo cada vez que escribes un Nombre nuevo en Productos. El menú te sirve para: rellenar SKUs de productos que ya tenías antes de instalar esto, y para preparar la pestaña de Pedidos.
 
 ## Paso 3 — Configurar la web
 

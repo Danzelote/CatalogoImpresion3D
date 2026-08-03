@@ -8,17 +8,20 @@
 --------------------------------------------- */
 const CONFIG = {
   // ID del Google Sheet (está en la URL: .../d/ESTE_ID/edit)
-  SHEET_ID: '1wyY5BBbm5ZJBYXs93H21l_2tRvCrYmWrbX_RLUrZjzs',
+  SHEET_ID: 'TU_SHEET_ID_AQUI',
 
   // Nombre exacto de la pestaña de productos
   SHEET_PRODUCTOS: 'Productos',
 
+  // Nombre exacto de la pestaña de colores de filamento disponibles
+  SHEET_COLORES: 'Colores',
+
   // URL del Apps Script publicado como Web App (ver README)
-  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbyx2v7w4F13VmmqHiU8GIDr1yto5ZwmPSiIOWoTPbVYBnz4Buxxvgses-23y-EzuZI/exec',
+  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/TU_DEPLOYMENT_ID/exec',
 
   // Número de WhatsApp donde llegan los pedidos, con código de país,
   // solo dígitos (ej. México: 52 + 10 dígitos)
-  WHATSAPP_NUMBER: '525531605449',
+  WHATSAPP_NUMBER: '5215512345678',
 
   // Símbolo/formato de moneda
   MONEDA: 'MXN',
@@ -133,7 +136,10 @@ function renderCatalogo() {
   catalogEl.innerHTML = lista.map(p => tarjetaProducto(p)).join('');
 
   catalogEl.querySelectorAll('.add-btn').forEach(btn => {
-    btn.addEventListener('click', () => agregarAlCarrito(btn.dataset.sku));
+    btn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      agregarAlCarrito(btn.dataset.sku);
+    });
   });
 
   catalogEl.querySelectorAll('.product-photos').forEach(el => {
@@ -141,7 +147,8 @@ function renderCatalogo() {
     const imgs = el.querySelectorAll('img');
     const dots = el.querySelectorAll('.photo-dots span');
     if (imgs.length > 1) {
-      el.addEventListener('click', () => {
+      el.addEventListener('click', (ev) => {
+        ev.stopPropagation();
         imgs[idx].classList.remove('active');
         dots[idx] && dots[idx].classList.remove('active');
         idx = (idx + 1) % imgs.length;
@@ -150,12 +157,16 @@ function renderCatalogo() {
       });
     }
   });
+
+  catalogEl.querySelectorAll('.product-card').forEach(card => {
+    card.addEventListener('click', () => abrirModal(card.dataset.sku));
+  });
 }
 
 function tarjetaProducto(p) {
   const enCarrito = CARRITO.some(i => i.sku === p.sku);
   return `
-    <article class="product-card">
+    <article class="product-card" data-sku="${escapeAttr(p.sku)}">
       <div class="product-photos">
         ${p.fotos.map((f, i) => `<img src="${escapeAttr(f)}" alt="${escapeAttr(p.nombre)}" class="${i === 0 ? 'active' : ''}" loading="lazy">`).join('')}
         ${p.fotos.length > 1 ? `<div class="photo-dots">${p.fotos.map((_, i) => `<span class="${i === 0 ? 'active' : ''}"></span>`).join('')}</div>` : ''}
@@ -174,6 +185,100 @@ function tarjetaProducto(p) {
       </div>
     </article>
   `;
+}
+
+/* ---------------------------------------------
+   5b) MODAL DE DETALLE (vista más grande)
+--------------------------------------------- */
+function abrirModal(sku) {
+  const p = PRODUCTOS.find(x => x.sku === sku);
+  if (!p) return;
+
+  const contenido = document.getElementById('modalContent');
+  contenido.innerHTML = `
+    <div class="modal-photos">
+      ${p.fotos.map((f, i) => `<img src="${escapeAttr(f)}" alt="${escapeAttr(p.nombre)}" class="${i === 0 ? 'active' : ''}">`).join('')}
+      ${p.fotos.length > 1 ? `<div class="photo-dots">${p.fotos.map((_, i) => `<span class="${i === 0 ? 'active' : ''}"></span>`).join('')}</div>` : ''}
+    </div>
+    <div class="modal-info">
+      <h2>${escapeHtml(p.nombre)}</h2>
+      <div class="product-sku">SKU ${escapeHtml(p.sku)}</div>
+      ${p.categorias.length ? `<div class="product-tags">${p.categorias.map(c => `<span class="product-tag">${escapeHtml(c)}</span>`).join('')}</div>` : ''}
+      <p class="modal-desc">${escapeHtml(p.descripcion) || 'Sin descripción.'}</p>
+      <div class="modal-footer">
+        <span class="product-price">${formatoPrecio(p.precio)}</span>
+        <button class="add-btn" id="modalAddBtn" data-sku="${escapeAttr(p.sku)}">
+          ${CARRITO.some(i => i.sku === p.sku) ? 'Agregado ✓' : 'Agregar'}
+        </button>
+      </div>
+    </div>
+  `;
+
+  const fotosEl = contenido.querySelector('.modal-photos');
+  const imgs = fotosEl.querySelectorAll('img');
+  const dots = fotosEl.querySelectorAll('.photo-dots span');
+  let idx = 0;
+  if (imgs.length > 1) {
+    fotosEl.addEventListener('click', () => {
+      imgs[idx].classList.remove('active');
+      dots[idx] && dots[idx].classList.remove('active');
+      idx = (idx + 1) % imgs.length;
+      imgs[idx].classList.add('active');
+      dots[idx] && dots[idx].classList.add('active');
+    });
+  }
+
+  document.getElementById('modalAddBtn').addEventListener('click', (ev) => {
+    agregarAlCarrito(sku);
+    ev.target.textContent = 'Agregado ✓';
+  });
+
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function cerrarModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+}
+
+/* ---------------------------------------------
+   5c) COLORES DE FILAMENTO DISPONIBLES
+--------------------------------------------- */
+async function cargarColores() {
+  const grid = document.getElementById('coloresGrid');
+  const seccion = document.querySelector('.colores-section');
+  if (!grid) return;
+
+  try {
+    const res = await fetch(urlCSV(CONFIG.SHEET_COLORES));
+    if (!res.ok) throw new Error('No se pudo leer la pestaña de Colores');
+    const csvText = await res.text();
+    const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
+
+    const colores = parsed.data
+      .map(row => ({
+        nombre: (row['Color'] || '').trim(),
+        foto: resolverFoto((row['Foto'] || '').trim()),
+        disponible: (row['Disponible'] || 'si').toString().trim().toLowerCase() !== 'no',
+      }))
+      .filter(c => c.nombre);
+
+    if (!colores.length) {
+      seccion.style.display = 'none';
+      return;
+    }
+
+    grid.innerHTML = colores.map(c => `
+      <div class="color-swatch ${c.disponible ? '' : 'agotado'}">
+        <img src="${escapeAttr(c.foto)}" alt="${escapeAttr(c.nombre)}" loading="lazy">
+        <span class="color-name">${escapeHtml(c.nombre)}</span>
+        <span class="color-status">${c.disponible ? 'Disponible' : 'Agotado'}</span>
+      </div>
+    `).join('');
+  } catch (err) {
+    console.error(err);
+    // Si no existe la pestaña "Colores" todavía, simplemente se oculta la sección.
+    seccion.style.display = 'none';
+  }
 }
 
 /* ---------------------------------------------
@@ -356,6 +461,11 @@ document.getElementById('cartToggle').addEventListener('click', abrirCarrito);
 document.getElementById('cartClose').addEventListener('click', cerrarCarrito);
 document.getElementById('cartOverlay').addEventListener('click', cerrarCarrito);
 document.getElementById('orderBtn').addEventListener('click', ordenar);
+document.getElementById('modalClose').addEventListener('click', cerrarModal);
+document.getElementById('modalOverlay').addEventListener('click', (ev) => {
+  if (ev.target.id === 'modalOverlay') cerrarModal();
+});
 
 renderCarrito();
 cargarProductos();
+cargarColores();

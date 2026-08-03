@@ -20,6 +20,10 @@
   </button>
 </header>
 
+<div class="material-banner">
+  Todas las piezas se imprimen en <strong>PLA</strong>. ¿Necesitas otro material? Se cotiza aparte por WhatsApp.
+</div>
+
 <nav class="category-bar" id="categoryBar">
   <!-- las categorías se generan solas desde el Google Sheet -->
 </nav>
@@ -31,9 +35,23 @@
   </div>
 </main>
 
+<section class="colores-section">
+  <h2 class="section-title">Colores disponibles</h2>
+  <p class="section-hint">Consulta si tu color está en existencia antes de ordenar.</p>
+  <div class="colores-grid" id="coloresGrid"></div>
+</section>
+
 <footer class="site-footer">
   Hecho a capas · pedidos por WhatsApp
 </footer>
+
+<!-- Modal de detalle de producto -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-box">
+    <button class="modal-close" id="modalClose">&times;</button>
+    <div class="modal-content" id="modalContent"></div>
+  </div>
+</div>
 
 <!-- Carrito -->
 <div class="cart-overlay" id="cartOverlay"></div>
