@@ -8,7 +8,7 @@
 --------------------------------------------- */
 const CONFIG = {
   // ID del Google Sheet (está en la URL: .../d/ESTE_ID/edit)
-  SHEET_ID: 'TU_SHEET_ID_AQUI',
+  SHEET_ID: '1wyY5BBbm5ZJBYXs93H21l_2tRvCrYmWrbX_RLUrZjzs',
 
   // Nombre exacto de la pestaña de productos
   SHEET_PRODUCTOS: 'Productos',
@@ -17,11 +17,11 @@ const CONFIG = {
   SHEET_COLORES: 'Colores',
 
   // URL del Apps Script publicado como Web App (ver README)
-  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/TU_DEPLOYMENT_ID/exec',
+  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbyx2v7w4F13VmmqHiU8GIDr1yto5ZwmPSiIOWoTPbVYBnz4Buxxvgses-23y-EzuZI/exec',
 
   // Número de WhatsApp donde llegan los pedidos, con código de país,
   // solo dígitos (ej. México: 52 + 10 dígitos)
-  WHATSAPP_NUMBER: '5215512345678',
+  WHATSAPP_NUMBER: '5531605449',
 
   // Símbolo/formato de moneda
   MONEDA: 'MXN',
