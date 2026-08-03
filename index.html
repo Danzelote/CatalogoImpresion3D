@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Catálogo 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="brand">
+    <span>Catálogo 3D</span>
+    <span class="layer-mark">0.20mm</span>
+  </div>
+  <button class="cart-toggle" id="cartToggle">
+    Pedido <span class="cart-count" id="cartCount">0</span>
+  </button>
+</header>
+
+<nav class="category-bar" id="categoryBar">
+  <!-- las categorías se generan solas desde el Google Sheet -->
+</nav>
+
+<main class="catalog" id="catalog">
+  <div class="state-msg">
+    Cargando catálogo…
+    <div class="bar"></div>
+  </div>
+</main>
+
+<footer class="site-footer">
+  Hecho a capas · pedidos por WhatsApp
+</footer>
+
+<!-- Carrito -->
+<div class="cart-overlay" id="cartOverlay"></div>
+<aside class="cart-drawer" id="cartDrawer">
+  <div class="cart-header">
+    <h2>Tu pedido</h2>
+    <button class="cart-close" id="cartClose">&times;</button>
+  </div>
+  <div class="cart-items" id="cartItems">
+    <div class="cart-empty">Aún no agregas productos.</div>
+  </div>
+  <div class="cart-footer">
+    <div class="cart-total">
+      <span>Total</span>
+      <span id="cartTotal">$0</span>
+    </div>
+    <button class="order-btn" id="orderBtn">Ordenar por WhatsApp</button>
+    <div class="order-hint">Se abrirá WhatsApp con tu pedido ya redactado.</div>
+  </div>
+</aside>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="script.js"></script>
+</body>
+</html>

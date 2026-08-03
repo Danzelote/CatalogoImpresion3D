@@ -1,1 +1,102 @@
-# CatalogoImpresion3D
+# Catálogo 3D
+
+Catálogo de productos que se edita 100% desde Google Sheets y se publica
+como página estática en GitHub Pages. Incluye carrito, categorías
+automáticas y botón de pedido que arma un mensaje de WhatsApp.
+
+## Cómo está armado
+
+```
+Google Sheet (Productos + Pedidos)
+        │
+        │  lectura (CSV público)          escritura (Apps Script)
+        ▼                                        ▲
+   index.html / script.js  ──────── al ordenar ───┘
+        │
+        ▼
+   wa.me (WhatsApp con el pedido ya redactado)
+```
+
+- **Leer productos**: la página pide el Sheet como CSV directamente, sin backend. Se actualiza solo al editar el Sheet, sin publicar nada.
+- **Registrar pedidos**: un pequeño script (Google Apps Script) genera el número de orden consecutivo y lo guarda en la pestaña "Pedidos". Es la única parte que necesita "escribir" datos.
+
+## Paso 1 — Crear el Google Sheet
+
+Crea un Sheet nuevo con **dos pestañas**:
+
+### Pestaña "Productos"
+
+| Nombre | SKU | Foto1 | Foto2 | Foto3 | Descripcion | Precio | Categorias | Activo |
+|---|---|---|---|---|---|---|---|---|
+| Dragón articulado | *(se genera solo)* | dragon-1.jpg | dragon-2.jpg | | Dragón articulado impreso en PLA, 25cm | 350 | Figuras, Fantasía | si |
+
+- **SKU**: déjalo vacío al agregar un producto nuevo — lo generas con un clic (ver paso 3).
+- **Foto1/2/3**: puedes poner solo el nombre del archivo (si subes las fotos al repo, ver paso 4) o una URL completa (`https://...`).
+- **Categorias**: escribe una o varias separadas por coma, ej. `Figuras, Fantasía`. Las etiquetas nuevas aparecen solas en la web, no hay que tocar código.
+- **Activo**: pon `no` para ocultar un producto sin borrarlo.
+
+### Pestaña "Pedidos"
+
+No la llenes a mano — se crea y se llena sola la primera vez que alguien ordena (o dale clic a **Catálogo 3D > Preparar hoja de Pedidos** en el menú del Sheet).
+
+### Hazlo visible
+
+**Compartir** (arriba a la derecha) → **Cualquier usuario con el enlace** → **Lector**. No necesitas "Publicar en la web", solo que sea visible por link.
+
+## Paso 2 — Conectar Apps Script (genera SKUs y números de orden)
+
+1. En el Sheet: **Extensiones > Apps Script**.
+2. Borra el contenido de `Código.gs` y pega el contenido de [`apps-script/Codigo.gs`](apps-script/Codigo.gs) de este proyecto.
+3. Guarda (ícono de disco).
+4. **Implementar > Nueva implementación**:
+   - Tipo: **Aplicación web**
+   - Ejecutar como: **Yo**
+   - Quién tiene acceso: **Cualquier usuario**
+5. Autoriza los permisos cuando te los pida (es tu propio script, es seguro).
+6. Copia la **URL de la aplicación web** que te da — la vas a pegar en `script.js`.
+7. Recarga el Sheet. Ahora verás un menú **Catálogo 3D** arriba. Úsalo para generar SKUs cuando agregues productos.
+
+## Paso 3 — Configurar la web
+
+Abre `script.js` y edita solo el bloque `CONFIG` al inicio:
+
+```js
+const CONFIG = {
+  SHEET_ID: 'pega-aquí-el-id-del-sheet',       // está en la URL del Sheet
+  SHEET_PRODUCTOS: 'Productos',
+  APPS_SCRIPT_URL: 'pega-aquí-la-url-del-paso-2',
+  WHATSAPP_NUMBER: '5215512345678',              // tu número, código de país + número, solo dígitos
+  MONEDA: 'MXN',
+  CARPETA_FOTOS: 'fotos/',
+};
+```
+
+El `SHEET_ID` es la parte de la URL entre `/d/` y `/edit`:
+`https://docs.google.com/spreadsheets/d/`**`ESTE_PEDAZO`**`/edit`
+
+## Paso 4 — Fotos de los productos
+
+La forma más simple: sube las fotos a una carpeta `fotos/` dentro de este mismo repositorio (arrástralas desde GitHub.com, sin necesidad de git). Luego en el Sheet solo escribe el nombre del archivo, ej. `dragon-1.jpg`.
+
+Todas se muestran del mismo tamaño automáticamente sin importar las dimensiones originales del archivo (la web las recorta a un cuadro parejo).
+
+Si prefieres usarlas desde otro lado (Google Drive, Cloudinary, etc.), simplemente pega la URL completa de la imagen en las columnas Foto1/2/3 y la web la detecta sola.
+
+## Paso 5 — Publicar en GitHub Pages
+
+1. Crea un repositorio nuevo en GitHub y sube estos archivos (`index.html`, `style.css`, `script.js`, tu carpeta `fotos/`).
+2. **Settings > Pages > Source**: rama `main`, carpeta `/ (root)`.
+3. En un par de minutos tu catálogo queda en `https://tu-usuario.github.io/tu-repo/`.
+
+## Cómo se usa día a día
+
+- **Agregar producto**: nueva fila en "Productos" con nombre, fotos, precio, categoría. Corre **Catálogo 3D > Generar SKUs faltantes** en el Sheet. Listo, aparece en la web al recargar.
+- **Nueva categoría**: solo escríbela en la columna Categorias de cualquier producto — el filtro se genera solo.
+- **Ver pedidos**: todos quedan en la pestaña "Pedidos" con número de orden, fecha, productos y total.
+- **Cambiar el número de WhatsApp**: edita `WHATSAPP_NUMBER` en `script.js`.
+
+## Notas técnicas
+
+- El carrito vive en el navegador de cada visitante (localStorage), así que no se comparte entre dispositivos.
+- El número de orden es consecutivo y lo asigna el propio Google Sheet al momento de ordenar (evita que dos personas ordenando al mismo tiempo choquen, gracias a `LockService`).
+- Si algún día quieres agregar más columnas (por ejemplo "Material" o "Tiempo de impresión"), solo agrégalas al Sheet y luego a `normalizarProducto()` en `script.js`.
