@@ -392,7 +392,43 @@ function cerrarCarrito() {
 
 /* ---------------------------------------------
    7) ENVÍO DE PEDIDO → Apps Script → WhatsApp
+   Usamos JSONP (una etiqueta <script>) en vez de fetch, porque
+   Apps Script no manda encabezados CORS y varios navegadores
+   (Safari en particular) bloquean leer la respuesta de un fetch
+   cruzado entre dominios sin esos encabezados.
 --------------------------------------------- */
+function llamarAppsScript(payload) {
+  return new Promise((resolve, reject) => {
+    const callbackName = 'catalogo3dCallback_' + Date.now();
+    const script = document.createElement('script');
+
+    const limpiar = () => {
+      clearTimeout(temporizador);
+      delete window[callbackName];
+      script.remove();
+    };
+
+    window[callbackName] = (resultado) => {
+      resolve(resultado);
+      limpiar();
+    };
+
+    const temporizador = setTimeout(() => {
+      reject(new Error('Tiempo de espera agotado contactando Apps Script'));
+      limpiar();
+    }, 15000);
+
+    script.onerror = () => {
+      reject(new Error('No se pudo contactar la URL de Apps Script'));
+      limpiar();
+    };
+
+    const query = `callback=${callbackName}&data=${encodeURIComponent(JSON.stringify(payload))}`;
+    script.src = `${CONFIG.APPS_SCRIPT_URL}?${query}`;
+    document.body.appendChild(script);
+  });
+}
+
 async function ordenar() {
   if (!CARRITO.length) return;
 
@@ -403,13 +439,7 @@ async function ordenar() {
   const total = CARRITO.reduce((a, i) => a + i.precio * i.cantidad, 0);
 
   try {
-    const res = await fetch(CONFIG.APPS_SCRIPT_URL, {
-      method: 'POST',
-      // text/plain evita el preflight CORS que Apps Script no maneja bien
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ items: CARRITO, total }),
-    });
-    const data = await res.json();
+    const data = await llamarAppsScript({ items: CARRITO, total });
 
     if (!data.ok) throw new Error(data.error || 'Error al registrar el pedido');
 
