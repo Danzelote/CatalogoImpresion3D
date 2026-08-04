@@ -24,9 +24,34 @@
   Todas las piezas se imprimen en <strong>PLA</strong>. ¿Necesitas otro material? Se cotiza aparte por WhatsApp.
 </div>
 
-<nav class="category-bar" id="categoryBar">
-  <!-- las categorías se generan solas desde el Google Sheet -->
-</nav>
+<div class="howto-banner">
+  Cómo funciona: da clic en un producto para ver más fotos y detalles · agrégalo a tu pedido · ordena por WhatsApp
+</div>
+
+<section class="novedades-section" id="novedadesSection">
+  <h2 class="section-title">Novedades</h2>
+  <div class="novedades-wrap">
+    <button class="carousel-btn" id="novPrev" aria-label="Anterior">‹</button>
+    <div class="novedades-track" id="novedadesTrack"></div>
+    <button class="carousel-btn" id="novNext" aria-label="Siguiente">›</button>
+  </div>
+</section>
+
+<div class="toolbar">
+  <nav class="category-bar" id="categoryBar">
+    <!-- las categorías se generan solas desde el Google Sheet -->
+  </nav>
+  <div class="sort-control">
+    <label for="sortSelect">Ordenar</label>
+    <select id="sortSelect">
+      <option value="relevancia">Recomendados</option>
+      <option value="nuevo">Más nuevo primero</option>
+      <option value="precio-asc">Precio: menor a mayor</option>
+      <option value="precio-desc">Precio: mayor a menor</option>
+      <option value="categoria">Categoría (A-Z)</option>
+    </select>
+  </div>
+</div>
 
 <main class="catalog" id="catalog">
   <div class="state-msg">
@@ -45,7 +70,16 @@
   Hecho a capas · pedidos por WhatsApp
 </footer>
 
-<!-- Modal de detalle de producto -->
+<!-- Confirmación antes de abrir WhatsApp -->
+<div class="modal-overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <div class="confirm-icon">✓</div>
+    <h2>Pedido registrado</h2>
+    <p id="confirmText"></p>
+    <p class="confirm-warning">Al continuar se abrirá WhatsApp con el mensaje ya escrito. Por favor no lo borres ni lo modifiques, solo dale <strong>enviar</strong>.</p>
+    <button class="order-btn" id="confirmWhatsappBtn">Abrir WhatsApp y enviar</button>
+  </div>
+</div>
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal-box">
     <button class="modal-close" id="modalClose">&times;</button>

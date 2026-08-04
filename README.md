@@ -34,6 +34,7 @@ Crea un Sheet nuevo con **tres pestañas**: Productos, Colores y Pedidos.
 - **Foto1/2/3**: escribe el nombre **completo del archivo, con extensión**, exactamente igual a como lo subiste (mayúsculas/minúsculas incluidas): `TorreDadosPortatil_01.jpg`, no `TorreDadosPortatil_01`. GitHub Pages distingue mayúsculas de minúsculas, así que `Foto.JPG` y `foto.jpg` son archivos distintos para él. También puedes pegar una URL completa (`https://...`) si prefieres otro hosting.
 - **Categorias**: escribe una o varias separadas por coma, ej. `Figuras, Fantasía`. Las etiquetas nuevas aparecen solas en la web, no hay que tocar código.
 - **Activo**: pon `no` para ocultar un producto sin borrarlo.
+- **Novedades**: pon `si` para que ese producto aparezca en el carrusel de "Novedades" hasta arriba de la página. Es una columna opcional — si no la agregas, el carrusel simplemente no se muestra.
 
 ### Pestaña "Colores" (opcional — galería de colores de filamento)
 

@@ -8,7 +8,7 @@
 --------------------------------------------- */
 const CONFIG = {
   // ID del Google Sheet (está en la URL: .../d/ESTE_ID/edit)
-  SHEET_ID: '1wyY5BBbm5ZJBYXs93H21l_2tRvCrYmWrbX_RLUrZjzs',
+  SHEET_ID: 'TU_SHEET_ID_AQUI',
 
   // Nombre exacto de la pestaña de productos
   SHEET_PRODUCTOS: 'Productos',
@@ -17,11 +17,11 @@ const CONFIG = {
   SHEET_COLORES: 'Colores',
 
   // URL del Apps Script publicado como Web App (ver README)
-  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbyx2v7w4F13VmmqHiU8GIDr1yto5ZwmPSiIOWoTPbVYBnz4Buxxvgses-23y-EzuZI/exec',
+  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/TU_DEPLOYMENT_ID/exec',
 
   // Número de WhatsApp donde llegan los pedidos, con código de país,
   // solo dígitos (ej. México: 52 + 10 dígitos)
-  WHATSAPP_NUMBER: '525531605449',
+  WHATSAPP_NUMBER: '5215512345678',
 
   // Símbolo/formato de moneda
   MONEDA: 'MXN',
@@ -38,6 +38,7 @@ const CONFIG = {
 --------------------------------------------- */
 let PRODUCTOS = [];
 let CATEGORIA_ACTIVA = 'todas';
+let ORDEN_ACTIVO = 'relevancia';
 let CARRITO = cargarCarrito();
 
 /* ---------------------------------------------
@@ -57,9 +58,11 @@ async function cargarProductos() {
 
     PRODUCTOS = parsed.data
       .map(normalizarProducto)
-      .filter(p => p.nombre && p.activo !== false);
+      .filter(p => p.nombre && p.activo !== false)
+      .map((p, i) => ({ ...p, _orden: i }));
 
     renderCategorias();
+    renderNovedades();
     renderCatalogo();
   } catch (err) {
     console.error(err);
@@ -86,6 +89,7 @@ function normalizarProducto(row) {
     precio: parseFloat((row['Precio'] || '0').toString().replace(/[^0-9.]/g, '')) || 0,
     categorias,
     activo: (row['Activo'] || 'si').toString().trim().toLowerCase() !== 'no',
+    novedad: (row['Novedades'] || 'no').toString().trim().toLowerCase() === 'si',
   };
 }
 
@@ -123,13 +127,67 @@ function renderCategorias() {
 }
 
 /* ---------------------------------------------
+   4b) NOVEDADES (carrusel)
+--------------------------------------------- */
+function renderNovedades() {
+  const seccion = document.getElementById('novedadesSection');
+  const track = document.getElementById('novedadesTrack');
+  const novedades = PRODUCTOS.filter(p => p.novedad);
+
+  if (!novedades.length) {
+    seccion.style.display = 'none';
+    return;
+  }
+  seccion.style.display = '';
+
+  track.innerHTML = novedades.map(p => `
+    <article class="novedad-card" data-sku="${escapeAttr(p.sku)}">
+      <div class="novedad-photo">
+        <img src="${escapeAttr(p.fotos[0])}" alt="${escapeAttr(p.nombre)}" loading="lazy">
+      </div>
+      <div class="novedad-info">
+        <span class="novedad-name">${escapeHtml(p.nombre)}</span>
+        <span class="novedad-price">${formatoPrecio(p.precio)}</span>
+      </div>
+    </article>
+  `).join('');
+
+  track.querySelectorAll('.novedad-card').forEach(card => {
+    card.addEventListener('click', () => abrirModal(card.dataset.sku));
+  });
+}
+
+/* ---------------------------------------------
    5) RENDER DEL CATÁLOGO
 --------------------------------------------- */
+function ordenarLista(lista) {
+  const ordenado = [...lista];
+  switch (ORDEN_ACTIVO) {
+    case 'nuevo':
+      ordenado.sort((a, b) => b._orden - a._orden);
+      break;
+    case 'precio-asc':
+      ordenado.sort((a, b) => a.precio - b.precio);
+      break;
+    case 'precio-desc':
+      ordenado.sort((a, b) => b.precio - a.precio);
+      break;
+    case 'categoria':
+      ordenado.sort((a, b) => (a.categorias[0] || '').localeCompare(b.categorias[0] || ''));
+      break;
+    default:
+      // 'relevancia' = se deja tal cual viene del Sheet
+      break;
+  }
+  return ordenado;
+}
+
 function renderCatalogo() {
   const catalogEl = document.getElementById('catalog');
-  const lista = PRODUCTOS.filter(p =>
+  const filtrada = PRODUCTOS.filter(p =>
     CATEGORIA_ACTIVA === 'todas' || p.categorias.includes(CATEGORIA_ACTIVA)
   );
+  const lista = ordenarLista(filtrada);
 
   if (!lista.length) {
     catalogEl.innerHTML = `<div class="state-msg">No hay productos en esta categoría todavía.</div>`;
@@ -437,19 +495,20 @@ async function ordenar() {
   orderBtn.textContent = 'Generando pedido…';
 
   const total = CARRITO.reduce((a, i) => a + i.precio * i.cantidad, 0);
+  const items = [...CARRITO];
 
   try {
-    const data = await llamarAppsScript({ items: CARRITO, total });
+    const data = await llamarAppsScript({ items, total });
 
     if (!data.ok) throw new Error(data.error || 'Error al registrar el pedido');
-
-    abrirWhatsApp(data.orderId, total);
 
     CARRITO = [];
     guardarCarrito();
     renderCarrito();
     renderCatalogo();
     cerrarCarrito();
+
+    mostrarConfirmacion(data.orderId, total, items);
   } catch (err) {
     console.error(err);
     alert('No se pudo generar el número de orden automáticamente. Revisa la URL de Apps Script en script.js. Tu pedido no se perdió, sigue en el carrito.');
@@ -459,10 +518,27 @@ async function ordenar() {
   }
 }
 
-function abrirWhatsApp(orderId, total) {
-  const listado = CARRITO.map(i => `- ${i.nombre} (SKU: ${i.sku}) x${i.cantidad}`).join('\n');
+function mostrarConfirmacion(orderId, total, items) {
+  document.getElementById('confirmText').textContent =
+    `Tu pedido quedó guardado con el número de orden ${orderId}.`;
+
+  const btn = document.getElementById('confirmWhatsappBtn');
+  btn.onclick = () => {
+    abrirWhatsApp(orderId, total, items);
+    cerrarConfirmacion();
+  };
+
+  document.getElementById('confirmOverlay').classList.add('open');
+}
+
+function cerrarConfirmacion() {
+  document.getElementById('confirmOverlay').classList.remove('open');
+}
+
+function abrirWhatsApp(orderId, total, items) {
+  const listado = items.map(i => `- ${i.nombre} (SKU: ${i.sku}) x${i.cantidad}`).join('\n');
   const mensaje =
-    `Hola, me gustaría realizar un pedido con el número de orden ${orderId}\n\n` +
+    `¡Hola! Acabo de hacer un pedido con el número de orden (${orderId})\n\n` +
     `${listado}\n\n` +
     `Total: ${formatoPrecio(total)}`;
 
@@ -497,6 +573,22 @@ document.getElementById('orderBtn').addEventListener('click', ordenar);
 document.getElementById('modalClose').addEventListener('click', cerrarModal);
 document.getElementById('modalOverlay').addEventListener('click', (ev) => {
   if (ev.target.id === 'modalOverlay') cerrarModal();
+});
+
+document.getElementById('confirmOverlay').addEventListener('click', (ev) => {
+  if (ev.target.id === 'confirmOverlay') cerrarConfirmacion();
+});
+
+document.getElementById('sortSelect').addEventListener('change', (ev) => {
+  ORDEN_ACTIVO = ev.target.value;
+  renderCatalogo();
+});
+
+document.getElementById('novPrev').addEventListener('click', () => {
+  document.getElementById('novedadesTrack').scrollBy({ left: -220, behavior: 'smooth' });
+});
+document.getElementById('novNext').addEventListener('click', () => {
+  document.getElementById('novedadesTrack').scrollBy({ left: 220, behavior: 'smooth' });
 });
 
 renderCarrito();

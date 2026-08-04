@@ -521,6 +521,135 @@ img { max-width: 100%; display: block; }
   font-family: var(--font-mono);
 }
 
+.howto-banner {
+  text-align: center;
+  font-size: 0.76rem;
+  color: var(--ink-muted);
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+/* ---------- Novedades (carrusel) ---------- */
+
+.novedades-section {
+  max-width: 1200px;
+  margin: 26px auto 0;
+  padding: 0 24px;
+}
+
+.novedades-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.novedades-track {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  padding-bottom: 8px;
+  flex: 1;
+}
+
+.novedades-track::-webkit-scrollbar { height: 6px; }
+.novedades-track::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+
+.novedad-card {
+  scroll-snap-align: start;
+  flex: 0 0 190px;
+  background: var(--panel);
+  border: 1px solid var(--filament-dim);
+  border-radius: var(--radius);
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.novedad-card:hover { transform: translateY(-3px); }
+
+.novedad-photo {
+  aspect-ratio: 1 / 1;
+  background: var(--bed-line);
+}
+
+.novedad-photo img { width: 100%; height: 100%; object-fit: cover; }
+
+.novedad-info {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.novedad-name {
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.novedad-price {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--filament);
+}
+
+.carousel-btn {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--ink);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.carousel-btn:hover { border-color: var(--filament); }
+
+/* ---------- Toolbar (categorías + orden) ---------- */
+
+.toolbar {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 22px 24px 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.toolbar .category-bar {
+  padding: 0;
+  margin: 0;
+  flex: 1;
+}
+
+.sort-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+}
+
+.sort-control select {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  padding: 7px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
 /* ---------- Colores disponibles ---------- */
 
 .colores-section {
@@ -687,6 +816,64 @@ img { max-width: 100%; display: block; }
   .modal-box { max-height: 92vh; }
 }
 
+/* ---------- Confirmación antes de WhatsApp ---------- */
+
+.confirm-box {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  width: min(400px, 100%);
+  padding: 32px 28px;
+  text-align: center;
+  transform: scale(0.96);
+  transition: transform 0.2s ease;
+}
+
+.modal-overlay.open .confirm-box { transform: scale(1); }
+
+.confirm-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--teal);
+  color: #17191c;
+  font-size: 1.3rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 14px;
+}
+
+.confirm-box h2 {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  margin: 0 0 8px;
+}
+
+.confirm-box p {
+  font-size: 0.88rem;
+  color: var(--ink-muted);
+  line-height: 1.5;
+  margin: 0 0 10px;
+}
+
+.confirm-box .confirm-warning {
+  background: var(--panel-raised);
+  border: 1px solid var(--filament-dim);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 0.8rem;
+  color: var(--ink);
+}
+
+.confirm-box .confirm-warning strong { color: var(--filament); }
+
+.confirm-box .order-btn {
+  width: 100%;
+  margin-top: 16px;
+}
+
 /* ---------- Footer ---------- */
 
 .site-footer {
@@ -700,7 +887,9 @@ img { max-width: 100%; display: block; }
 
 @media (max-width: 640px) {
   .site-header { padding: 14px 16px; }
-  .category-bar { padding: 16px 16px 4px; }
+  .toolbar { padding: 16px 16px 4px; }
+  .novedades-section { padding: 0 16px; }
+  .novedad-card { flex: 0 0 150px; }
   .catalog { padding: 16px 16px 60px; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
   .product-body { padding: 12px; gap: 6px; }
 }
