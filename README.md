@@ -92,13 +92,15 @@ const CONFIG = {
 El `SHEET_ID` es la parte de la URL entre `/d/` y `/edit`:
 `https://docs.google.com/spreadsheets/d/`**`ESTE_PEDAZO`**`/edit`
 
-## Paso 4 — Fotos de los productos
+## Paso 4 — Fotos de los productos (Google Drive)
 
-La forma más simple: sube las fotos a una carpeta `fotos/` dentro de este mismo repositorio (arrástralas desde GitHub.com, sin necesidad de git). Luego en el Sheet solo escribe el nombre del archivo, ej. `dragon-1.jpg`.
+1. Comparte la carpeta principal donde tienes todo (ej. `CatalogoImpresiones3D`) como pública: clic derecho → **Compartir** → cambia el acceso general a **"Cualquier usuario con el enlace"**, rol **Lector**. Esto aplica automáticamente a todo lo que tengas adentro, incluidas las subcarpetas de productos y colores — no hace falta repetirlo por cada archivo.
+2. Para cada foto: clic derecho sobre el archivo en Drive → **Compartir** → **Copiar enlace**.
+3. Pega ese link tal cual (el largo, con `https://drive.google.com/file/d/...`) en las columnas Foto1/Foto2/Foto3 del Sheet, o en la columna Foto de la pestaña Colores. La web reconoce automáticamente que es un link de Drive y lo convierte al formato que sí puede mostrarse en una página web — no necesitas editarlo tú.
 
 Todas se muestran del mismo tamaño automáticamente sin importar las dimensiones originales del archivo (la web las recorta a un cuadro parejo).
 
-Si prefieres usarlas desde otro lado (Google Drive, Cloudinary, etc.), simplemente pega la URL completa de la imagen en las columnas Foto1/2/3 y la web la detecta sola.
+Si en algún momento prefieres subir fotos directo al repo de GitHub en vez de Drive, también funciona: solo pon el nombre del archivo con extensión en vez del link, y la web lo busca en la carpeta `fotos/` (o `ColoresFilamentos/`) del repo.
 
 ## Paso 5 — Publicar en GitHub Pages
 

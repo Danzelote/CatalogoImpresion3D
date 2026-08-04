@@ -8,7 +8,7 @@
 --------------------------------------------- */
 const CONFIG = {
   // ID del Google Sheet (está en la URL: .../d/ESTE_ID/edit)
-  SHEET_ID: '1wyY5BBbm5ZJBYXs93H21l_2tRvCrYmWrbX_RLUrZjzs',
+  SHEET_ID: 'TU_SHEET_ID_AQUI',
 
   // Nombre exacto de la pestaña de productos
   SHEET_PRODUCTOS: 'Productos',
@@ -17,19 +17,19 @@ const CONFIG = {
   SHEET_COLORES: 'Colores',
 
   // URL del Apps Script publicado como Web App (ver README)
-  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbyx2v7w4F13VmmqHiU8GIDr1yto5ZwmPSiIOWoTPbVYBnz4Buxxvgses-23y-EzuZI/exec',
+  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/TU_DEPLOYMENT_ID/exec',
 
   // Número de WhatsApp donde llegan los pedidos, con código de país,
   // solo dígitos (ej. México: 52 + 10 dígitos)
-  WHATSAPP_NUMBER: '525531605449',
+  WHATSAPP_NUMBER: '5215512345678',
 
   // Símbolo/formato de moneda
   MONEDA: 'MXN',
 
-  // Carpeta donde subes las fotos de productos dentro del repo
+  // Estas dos carpetas solo se usan como respaldo si en el Sheet pones
+  // nombres de archivo sueltos en vez de links de Google Drive o URLs
+  // completas. Si vas a usar Drive para todo, puedes dejarlas tal cual.
   CARPETA_FOTOS: 'fotos/',
-
-  // Carpeta donde subes las fotos de los carretes de colores
   CARPETA_COLORES: 'ColoresFilamentos/',
 };
 
@@ -93,11 +93,36 @@ function normalizarProducto(row) {
   };
 }
 
-// Si en el Sheet pusiste solo el nombre del archivo (ej. "dragon.jpg"),
-// lo resuelve a la carpeta indicada del repo. Si ya pusiste una URL completa
-// (http...), la deja igual.
+// Saca el ID de un archivo a partir de cualquier formato de link para
+// compartir de Google Drive (o si ya es solo el ID, lo usa tal cual).
+function extraerIdDrive(valor) {
+  const patrones = [
+    /\/d\/([a-zA-Z0-9_-]{20,})/,     // .../file/d/ID/view...
+    /[?&]id=([a-zA-Z0-9_-]{20,})/,   // ...?id=ID
+  ];
+  for (const patron of patrones) {
+    const match = valor.match(patron);
+    if (match) return match[1];
+  }
+  if (/^[a-zA-Z0-9_-]{20,}$/.test(valor.trim())) return valor.trim();
+  return null;
+}
+
+// Convierte lo que hayas puesto en el Sheet a una URL de imagen que sí
+// se puede insertar en la página:
+// - Un link de "Compartir" de Google Drive → se convierte al formato correcto.
+// - Una URL completa de cualquier otro sitio (http...) → se deja igual.
+// - Solo un nombre de archivo → se asume que está en el repo, dentro de "carpeta".
 function resolverFoto(valor, carpeta = CONFIG.CARPETA_FOTOS) {
+  if (!valor) return '';
+
+  if (valor.includes('drive.google.com') || /^[a-zA-Z0-9_-]{20,}$/.test(valor.trim())) {
+    const id = extraerIdDrive(valor);
+    if (id) return `https://lh3.googleusercontent.com/d/${id}`;
+  }
+
   if (/^https?:\/\//i.test(valor)) return valor;
+
   return carpeta + valor;
 }
 
