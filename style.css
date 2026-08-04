@@ -874,6 +874,114 @@ img { max-width: 100%; display: block; }
   margin-top: 16px;
 }
 
+/* ---------- Consultar status de pedido ---------- */
+
+.status-section {
+  max-width: 1200px;
+  margin: 20px auto 0;
+  padding: 0 24px 40px;
+}
+
+.status-form {
+  display: flex;
+  gap: 10px;
+  max-width: 420px;
+  margin-top: 4px;
+}
+
+.status-form input {
+  flex: 1;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+}
+
+.status-form input:focus {
+  outline: none;
+  border-color: var(--filament);
+}
+
+.status-form button {
+  background: var(--filament);
+  color: #17191c;
+  border: none;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.status-form button:hover { filter: brightness(1.08); }
+.status-form button:disabled { opacity: 0.5; cursor: wait; }
+
+.status-result {
+  margin-top: 16px;
+  max-width: 420px;
+}
+
+.status-result:empty { display: none; }
+
+.status-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+}
+
+.status-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.status-order-id {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--ink-muted);
+}
+
+.status-badge {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.status-badge.pendiente { background: rgba(255, 106, 61, 0.15); color: var(--filament); border: 1px solid var(--filament-dim); }
+.status-badge.en-proceso,
+.status-badge.en-produccion,
+.status-badge.imprimiendo { background: rgba(45, 212, 191, 0.15); color: var(--teal); border: 1px solid rgba(45, 212, 191, 0.4); }
+.status-badge.listo,
+.status-badge.entregado,
+.status-badge.completado { background: rgba(45, 212, 191, 0.15); color: var(--teal); border: 1px solid rgba(45, 212, 191, 0.4); }
+.status-badge.cancelado { background: rgba(224, 82, 74, 0.15); color: var(--danger); border: 1px solid rgba(224, 82, 74, 0.4); }
+.status-badge.default { background: var(--panel-raised); color: var(--ink-muted); border: 1px solid var(--line); }
+
+.status-detail {
+  font-size: 0.82rem;
+  color: var(--ink-muted);
+  line-height: 1.5;
+}
+
+.status-detail strong { color: var(--ink); font-weight: 600; }
+
+.status-not-found {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--danger);
+}
+
 /* ---------- Footer ---------- */
 
 .site-footer {

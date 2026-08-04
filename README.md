@@ -51,11 +51,21 @@ Crea un Sheet nuevo con **tres pestañas**: Productos, Colores y Pedidos.
 
 No la llenes a mano. Para verla lista desde ya, corre **Catálogo 3D > Preparar hoja de Pedidos** en el menú del Sheet (aparece después del paso 2). Si no la preparas manualmente, se crea sola en cuanto llega el primer pedido real. Sus columnas son:
 
-| Número de orden | Fecha | Productos | Total |
-|---|---|---|---|
-| 000001 | 03/08/2026 10:15 | Torre de dados (SKU: P-4K9QZ) x1, Dragón (SKU: P-88XJ2) x2 | $1050 |
+| Número de orden | Fecha | Productos | Total | Status |
+|---|---|---|---|---|
+| 000001 | 03/08/2026 10:15 | Torre de dados (SKU: P-4K9QZ) x1, Dragón (SKU: P-88XJ2) x2 | $1050 | Pendiente |
 
-No necesitas tocar esta pestaña — el Apps Script del paso 2 es quien escribe ahí cada vez que alguien da clic en "Ordenar por WhatsApp".
+No necesitas tocar las primeras 4 columnas — el Apps Script del paso 2 las escribe solo cada vez que alguien da clic en "Ordenar por WhatsApp", siempre con Status inicial **Pendiente**.
+
+**Sí tienes que actualizar tú la columna Status** conforme avanza cada pedido, para que el cliente pueda consultarlo desde la web (sección "Consultar mi pedido"). Escribe lo que prefieras, por ejemplo:
+
+- `Pendiente` (automático al crearse)
+- `En proceso`
+- `Listo`
+- `Entregado`
+- `Cancelado`
+
+Estos 5 valores tienen un color especial asignado en la web (naranja, verde o rojo según el caso); si escribes otra palabra distinta también funciona, solo se muestra en gris neutro.
 
 ### Hazlo visible
 

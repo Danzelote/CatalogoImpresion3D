@@ -8,7 +8,7 @@
 --------------------------------------------- */
 const CONFIG = {
   // ID del Google Sheet (está en la URL: .../d/ESTE_ID/edit)
-  SHEET_ID: '1wyY5BBbm5ZJBYXs93H21l_2tRvCrYmWrbX_RLUrZjzs',
+  SHEET_ID: 'TU_SHEET_ID_AQUI',
 
   // Nombre exacto de la pestaña de productos
   SHEET_PRODUCTOS: 'Productos',
@@ -17,11 +17,11 @@ const CONFIG = {
   SHEET_COLORES: 'Colores',
 
   // URL del Apps Script publicado como Web App (ver README)
-  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbyx2v7w4F13VmmqHiU8GIDr1yto5ZwmPSiIOWoTPbVYBnz4Buxxvgses-23y-EzuZI/exec',
+  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/TU_DEPLOYMENT_ID/exec',
 
   // Número de WhatsApp donde llegan los pedidos, con código de país,
   // solo dígitos (ej. México: 52 + 10 dígitos)
-  WHATSAPP_NUMBER: '525531605449',
+  WHATSAPP_NUMBER: '5215512345678',
 
   // Símbolo/formato de moneda
   MONEDA: 'MXN',
@@ -480,9 +480,9 @@ function cerrarCarrito() {
    (Safari en particular) bloquean leer la respuesta de un fetch
    cruzado entre dominios sin esos encabezados.
 --------------------------------------------- */
-function llamarAppsScript(payload) {
+function llamarAppsScript(query) {
   return new Promise((resolve, reject) => {
-    const callbackName = 'catalogo3dCallback_' + Date.now();
+    const callbackName = 'catalogo3dCallback_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
     const script = document.createElement('script');
 
     const limpiar = () => {
@@ -506,8 +506,7 @@ function llamarAppsScript(payload) {
       limpiar();
     };
 
-    const query = `callback=${callbackName}&data=${encodeURIComponent(JSON.stringify(payload))}`;
-    script.src = `${CONFIG.APPS_SCRIPT_URL}?${query}`;
+    script.src = `${CONFIG.APPS_SCRIPT_URL}?callback=${callbackName}&${query}`;
     document.body.appendChild(script);
   });
 }
@@ -523,7 +522,8 @@ async function ordenar() {
   const items = [...CARRITO];
 
   try {
-    const data = await llamarAppsScript({ items, total });
+    const query = `data=${encodeURIComponent(JSON.stringify({ items, total }))}`;
+    const data = await llamarAppsScript(query);
 
     if (!data.ok) throw new Error(data.error || 'Error al registrar el pedido');
 
@@ -572,6 +572,69 @@ function abrirWhatsApp(orderId, total, items) {
 }
 
 /* ---------------------------------------------
+   7b) CONSULTAR STATUS DE UN PEDIDO
+--------------------------------------------- */
+async function consultarStatus(numeroOrden) {
+  const query = `accion=consultar&orden=${encodeURIComponent(numeroOrden)}`;
+  return llamarAppsScript(query);
+}
+
+function claseStatus(status) {
+  return (status || '')
+    .toString()
+    .trim()
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // quita acentos
+    .replace(/\s+/g, '-');
+}
+
+async function manejarConsultaStatus(ev) {
+  ev.preventDefault();
+  const input = document.getElementById('statusInput');
+  const boton = document.getElementById('statusBtn');
+  const resultado = document.getElementById('statusResult');
+  const numero = input.value.trim();
+
+  if (!numero) return;
+
+  boton.disabled = true;
+  boton.textContent = 'Buscando…';
+  resultado.innerHTML = '';
+
+  try {
+    const data = await consultarStatus(numero);
+
+    if (!data.ok) throw new Error(data.error || 'Error al consultar');
+
+    if (!data.encontrado) {
+      resultado.innerHTML = `<div class="status-not-found">No encontramos ningún pedido con el número "${escapeHtml(numero)}". Revisa que esté correcto.</div>`;
+      return;
+    }
+
+    const clase = claseStatus(data.status);
+    resultado.innerHTML = `
+      <div class="status-card">
+        <div class="status-card-top">
+          <span class="status-order-id">Orden ${escapeHtml(data.orderId)}</span>
+          <span class="status-badge ${clase}">${escapeHtml(data.status)}</span>
+        </div>
+        <div class="status-detail">
+          <strong>Fecha:</strong> ${escapeHtml(data.fecha)}<br>
+          <strong>Productos:</strong> ${escapeHtml(data.productos)}<br>
+          <strong>Total:</strong> ${formatoPrecio(parseFloat(data.total) || 0)}
+        </div>
+      </div>
+    `;
+  } catch (err) {
+    console.error(err);
+    resultado.innerHTML = `<div class="status-not-found">No se pudo consultar el status en este momento. Intenta de nuevo en un momento.</div>`;
+  } finally {
+    boton.disabled = false;
+    boton.textContent = 'Consultar';
+  }
+}
+
+/* ---------------------------------------------
    8) UTILIDADES
 --------------------------------------------- */
 function formatoPrecio(n) {
@@ -603,6 +666,8 @@ document.getElementById('modalOverlay').addEventListener('click', (ev) => {
 document.getElementById('confirmOverlay').addEventListener('click', (ev) => {
   if (ev.target.id === 'confirmOverlay') cerrarConfirmacion();
 });
+
+document.getElementById('statusForm').addEventListener('submit', manejarConsultaStatus);
 
 document.getElementById('sortSelect').addEventListener('change', (ev) => {
   ORDEN_ACTIVO = ev.target.value;
