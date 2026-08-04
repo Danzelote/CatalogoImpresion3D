@@ -8,36 +8,43 @@
 --------------------------------------------- */
 const CONFIG = {
   // ID del Google Sheet (está en la URL: .../d/ESTE_ID/edit)
-  SHEET_ID: '1wyY5BBbm5ZJBYXs93H21l_2tRvCrYmWrbX_RLUrZjzs',
+  SHEET_ID: 'TU_SHEET_ID_AQUI',
 
-  // Nombre exacto de la pestaña de productos
+  // Nombres exactos de las pestañas
   SHEET_PRODUCTOS: 'Productos',
-
-  // Nombre exacto de la pestaña de colores de filamento disponibles
   SHEET_COLORES: 'Colores',
 
   // URL del Apps Script publicado como Web App (ver README)
-  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbyx2v7w4F13VmmqHiU8GIDr1yto5ZwmPSiIOWoTPbVYBnz4Buxxvgses-23y-EzuZI/exec',
+  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/TU_DEPLOYMENT_ID/exec',
 
-  // Número de WhatsApp donde llegan los pedidos, con código de país,
-  // solo dígitos (ej. México: 52 + 10 dígitos)
-  WHATSAPP_NUMBER: '525531605449',
+  // Número de WhatsApp donde llegan los pedidos y las dudas de contacto,
+  // con código de país, solo dígitos (ej. México: 52 + 10 dígitos)
+  WHATSAPP_NUMBER: '5215512345678',
+
+  // Mensaje predeterminado del botón flotante de contacto (dudas generales,
+  // no pedidos — esos usan su propio mensaje con número de orden)
+  WHATSAPP_MENSAJE_CONTACTO: '¡Hola! Vi tu catálogo de impresiones 3D y tengo unas dudas.',
 
   // Símbolo/formato de moneda
   MONEDA: 'MXN',
 
-  // Estas dos carpetas solo se usan como respaldo si en el Sheet pones
-  // nombres de archivo sueltos en vez de links de Google Drive o URLs
-  // completas. Si vas a usar Drive para todo, puedes dejarlas tal cual.
-  CARPETA_FOTOS: 'fotos/',
-  CARPETA_COLORES: 'ColoresFilamentos/',
+  // URL de la imagen de tu logotipo (Drive o cualquier URL completa).
+  // Si la dejas vacía, solo se muestra el texto "Catálogo 3D".
+  LOGO_URL: '',
+
+  // Textos del encabezado — edítalos las veces que quieras sin tocar HTML.
+  DESCRIPCION_SITIO: 'Piezas impresas en 3D, listas para recoger — no vendemos archivos STL.',
+  MENSAJE_MATERIAL: 'Todas las piezas se imprimen en PLA. ¿Necesitas otro material? Se cotiza aparte por WhatsApp.',
+  MENSAJE_ENVIO: 'Por ahora no hacemos envíos a domicilio: coordinamos un punto de recolección en CDMX.',
 };
 
 /* ---------------------------------------------
    2) ESTADO
 --------------------------------------------- */
 let PRODUCTOS = [];
+let COLORES_DISPONIBLES = [];
 let CATEGORIA_ACTIVA = 'todas';
+let SUBCATEGORIA_ACTIVA = 'todas';
 let ORDEN_ACTIVO = 'relevancia';
 let CARRITO = cargarCarrito();
 
@@ -46,6 +53,27 @@ let CARRITO = cargarCarrito();
 --------------------------------------------- */
 function urlCSV(sheetName) {
   return `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
+}
+
+async function cargarColores() {
+  try {
+    const res = await fetch(urlCSV(CONFIG.SHEET_COLORES));
+    if (!res.ok) throw new Error('No se pudo leer la pestaña de Colores');
+    const csvText = await res.text();
+    const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
+
+    // Solo se cargan los colores marcados explícitamente como disponibles.
+    // Si "Disponible" está vacío o dice "no", ese color no aparece en ningún selector.
+    COLORES_DISPONIBLES = parsed.data
+      .map(row => ({
+        nombre: (row['Color'] || '').trim(),
+        disponible: (row['Disponible'] || '').toString().trim().toLowerCase() === 'si',
+      }))
+      .filter(c => c.nombre && c.disponible);
+  } catch (err) {
+    console.error(err);
+    COLORES_DISPONIBLES = [];
+  }
 }
 
 async function cargarProductos() {
@@ -58,7 +86,9 @@ async function cargarProductos() {
 
     PRODUCTOS = parsed.data
       .map(normalizarProducto)
-      .filter(p => p.nombre && p.activo !== false)
+      // Se oculta si falta el nombre, si Activo no dice explícitamente "si",
+      // o si el precio está vacío/ inválido (evita mostrar productos en $0).
+      .filter(p => p.nombre && p.activo && !isNaN(p.precio))
       .map((p, i) => ({ ...p, _orden: i }));
 
     renderCategorias();
@@ -74,22 +104,34 @@ function normalizarProducto(row) {
   const fotos = [row['Foto1'], row['Foto2'], row['Foto3']]
     .map(f => (f || '').trim())
     .filter(Boolean)
-    .map(f => resolverFoto(f));
+    .map(f => resolverFoto(f))
+    .filter(Boolean);
 
   const categorias = (row['Categorias'] || row['Categorías'] || '')
     .split(',')
     .map(c => c.trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    .map(c => {
+      const partes = c.split('>').map(p => p.trim()).filter(Boolean);
+      return { padre: partes[0] || '', hijo: partes[1] || '' };
+    })
+    .filter(c => c.padre);
+
+  const precioTexto = (row['Precio'] || '').toString().trim();
+  const precio = precioTexto ? parseFloat(precioTexto.replace(/[^0-9.]/g, '')) : NaN;
 
   return {
     nombre: (row['Nombre'] || '').trim(),
     sku: (row['SKU'] || '').trim(),
     fotos: fotos.length ? fotos : ['https://placehold.co/500x500/232629/6b6f76?text=Sin+foto'],
     descripcion: (row['Descripcion'] || row['Descripción'] || '').trim(),
-    precio: parseFloat((row['Precio'] || '0').toString().replace(/[^0-9.]/g, '')) || 0,
+    precio,
     categorias,
-    activo: (row['Activo'] || 'si').toString().trim().toLowerCase() !== 'no',
-    novedad: (row['Novedades'] || 'no').toString().trim().toLowerCase() === 'si',
+    // Activo solo cuenta como "si" está escrito explícitamente — vacío = oculto.
+    activo: (row['Activo'] || '').toString().trim().toLowerCase() === 'si',
+    novedad: (row['Novedades'] || '').toString().trim().toLowerCase() === 'si',
+    opcionesColor: (row['Opciones de color'] || row['Opciones De Color'] || '').toString().trim().toLowerCase() === 'si',
+    cantidadPorPieza: (row['Cantidad'] || '').toString().trim(),
   };
 }
 
@@ -108,38 +150,53 @@ function extraerIdDrive(valor) {
   return null;
 }
 
-// Convierte lo que hayas puesto en el Sheet a una URL de imagen que sí
-// se puede insertar en la página:
-// - Un link de "Compartir" de Google Drive → se convierte al formato correcto.
-// - Una URL completa de cualquier otro sitio (http...) → se deja igual.
-// - Solo un nombre de archivo → se asume que está en el repo, dentro de "carpeta".
-function resolverFoto(valor, carpeta = CONFIG.CARPETA_FOTOS) {
+// Convierte un link de Google Drive (o una URL completa de cualquier otro
+// sitio) en una URL de imagen que sí se puede insertar en la página.
+// Ya no se usan carpetas locales del repo — todo viene de Drive o de una
+// URL externa completa.
+function resolverFoto(valor) {
   if (!valor) return '';
 
   if (valor.includes('drive.google.com') || /^[a-zA-Z0-9_-]{20,}$/.test(valor.trim())) {
     const id = extraerIdDrive(valor);
     // =w800 le pide a Drive una versión ya redimensionada a 800px de ancho,
-    // en vez de la foto original a resolución completa — mucho más rápido
-    // de cargar en datos móviles, sin perderse nitidez en pantalla.
+    // en vez de la foto original a resolución completa — más rápido en móvil.
     if (id) return `https://lh3.googleusercontent.com/d/${id}=w800`;
   }
 
   if (/^https?:\/\//i.test(valor)) return valor;
 
-  return carpeta + valor;
+  // No es un link de Drive reconocible ni una URL completa: no hay forma
+  // de mostrarlo, se descarta en vez de generar una imagen rota.
+  return '';
 }
 
 /* ---------------------------------------------
-   4) CATEGORÍAS AUTOMÁTICAS
+   4) CATEGORÍAS Y SUBCATEGORÍAS AUTOMÁTICAS
 --------------------------------------------- */
+function etiquetaCategoria(cat) {
+  return cat.hijo ? `${cat.padre} › ${cat.hijo}` : cat.padre;
+}
+
+function construirArbolCategorias() {
+  const arbol = new Map(); // 'Categoría padre' -> Set de subcategorías
+  PRODUCTOS.forEach(p => {
+    p.categorias.forEach(c => {
+      if (!arbol.has(c.padre)) arbol.set(c.padre, new Set());
+      if (c.hijo) arbol.get(c.padre).add(c.hijo);
+    });
+  });
+  return arbol;
+}
+
 function renderCategorias() {
   const bar = document.getElementById('categoryBar');
-  const todas = new Set();
-  PRODUCTOS.forEach(p => p.categorias.forEach(c => todas.add(c)));
+  const subBar = document.getElementById('subcategoryBar');
+  const arbol = construirArbolCategorias();
 
-  const categorias = ['todas', ...Array.from(todas).sort()];
+  const padres = ['todas', ...Array.from(arbol.keys()).sort()];
 
-  bar.innerHTML = categorias.map(c => `
+  bar.innerHTML = padres.map(c => `
     <button class="category-chip ${c === CATEGORIA_ACTIVA ? 'active' : ''}" data-cat="${escapeAttr(c)}">
       ${c === 'todas' ? 'Todas' : escapeHtml(c)}
     </button>
@@ -148,6 +205,33 @@ function renderCategorias() {
   bar.querySelectorAll('.category-chip').forEach(btn => {
     btn.addEventListener('click', () => {
       CATEGORIA_ACTIVA = btn.dataset.cat;
+      SUBCATEGORIA_ACTIVA = 'todas';
+      renderCategorias();
+      renderCatalogo();
+    });
+  });
+
+  const hijos = CATEGORIA_ACTIVA !== 'todas'
+    ? Array.from(arbol.get(CATEGORIA_ACTIVA) || []).sort()
+    : [];
+
+  if (!hijos.length) {
+    subBar.innerHTML = '';
+    subBar.classList.remove('visible');
+    return;
+  }
+
+  subBar.classList.add('visible');
+  const opciones = ['todas', ...hijos];
+  subBar.innerHTML = opciones.map(h => `
+    <button class="subcategory-chip ${h === SUBCATEGORIA_ACTIVA ? 'active' : ''}" data-sub="${escapeAttr(h)}">
+      ${h === 'todas' ? 'Todas' : escapeHtml(h)}
+    </button>
+  `).join('');
+
+  subBar.querySelectorAll('.subcategory-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      SUBCATEGORIA_ACTIVA = btn.dataset.sub;
       renderCategorias();
       renderCatalogo();
     });
@@ -201,7 +285,7 @@ function ordenarLista(lista) {
       ordenado.sort((a, b) => b.precio - a.precio);
       break;
     case 'categoria':
-      ordenado.sort((a, b) => (a.categorias[0] || '').localeCompare(b.categorias[0] || ''));
+      ordenado.sort((a, b) => (a.categorias[0]?.padre || '').localeCompare(b.categorias[0]?.padre || ''));
       break;
     default:
       // 'relevancia' = se deja tal cual viene del Sheet
@@ -212,9 +296,14 @@ function ordenarLista(lista) {
 
 function renderCatalogo() {
   const catalogEl = document.getElementById('catalog');
-  const filtrada = PRODUCTOS.filter(p =>
-    CATEGORIA_ACTIVA === 'todas' || p.categorias.includes(CATEGORIA_ACTIVA)
-  );
+  const filtrada = PRODUCTOS.filter(p => {
+    if (CATEGORIA_ACTIVA === 'todas') return true;
+    return p.categorias.some(c => {
+      if (c.padre !== CATEGORIA_ACTIVA) return false;
+      if (SUBCATEGORIA_ACTIVA === 'todas') return true;
+      return c.hijo === SUBCATEGORIA_ACTIVA;
+    });
+  });
   const lista = ordenarLista(filtrada);
 
   if (!lista.length) {
@@ -227,7 +316,7 @@ function renderCatalogo() {
   catalogEl.querySelectorAll('.add-btn').forEach(btn => {
     btn.addEventListener('click', (ev) => {
       ev.stopPropagation();
-      agregarAlCarrito(btn.dataset.sku);
+      manejarClicAgregar(btn, btn.closest('.product-card'));
     });
   });
 
@@ -247,13 +336,35 @@ function renderCatalogo() {
     }
   });
 
+  catalogEl.querySelectorAll('.color-select').forEach(sel => {
+    sel.addEventListener('click', (ev) => ev.stopPropagation());
+  });
+
   catalogEl.querySelectorAll('.product-card').forEach(card => {
     card.addEventListener('click', () => abrirModal(card.dataset.sku));
   });
 }
 
+const ICONO_CARRITO = `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>`;
+
+function opcionesColorHTML(sku) {
+  if (!COLORES_DISPONIBLES.length) {
+    return `<p class="color-hint">Aún no hay colores cargados — pregunta por WhatsApp.</p>`;
+  }
+  return `
+    <div class="color-select-wrap">
+      <label>Color</label>
+      <select class="color-select" data-sku="${escapeAttr(sku)}">
+        <option value="">Elige un color</option>
+        ${COLORES_DISPONIBLES.map(c => `<option value="${escapeAttr(c.nombre)}">${escapeHtml(c.nombre)}</option>`).join('')}
+      </select>
+      <span class="color-hint">¿No ves tu color? Pregúntanos por WhatsApp.</span>
+    </div>
+  `;
+}
+
 function tarjetaProducto(p) {
-  const enCarrito = CARRITO.some(i => i.sku === p.sku);
+  const enCarrito = !p.opcionesColor && CARRITO.some(i => i.sku === p.sku);
   return `
     <article class="product-card" data-sku="${escapeAttr(p.sku)}">
       <div class="product-photos">
@@ -263,17 +374,41 @@ function tarjetaProducto(p) {
       <div class="product-body">
         <div class="product-name">${escapeHtml(p.nombre)}</div>
         <div class="product-sku">SKU ${escapeHtml(p.sku)}</div>
+        ${p.cantidadPorPieza ? `<div class="product-quantity">Cantidad: ${escapeHtml(p.cantidadPorPieza)}</div>` : ''}
         ${p.descripcion ? `<div class="product-desc">${escapeHtml(p.descripcion)}</div>` : ''}
-        ${p.categorias.length ? `<div class="product-tags">${p.categorias.map(c => `<span class="product-tag">${escapeHtml(c)}</span>`).join('')}</div>` : ''}
+        ${p.categorias.length ? `<div class="product-tags">${p.categorias.map(c => `<span class="product-tag">${escapeHtml(etiquetaCategoria(c))}</span>`).join('')}</div>` : ''}
+        ${p.opcionesColor ? opcionesColorHTML(p.sku) : ''}
         <div class="product-footer">
           <span class="product-price">${formatoPrecio(p.precio)}</span>
           <button class="add-btn ${enCarrito ? 'added' : ''}" data-sku="${escapeAttr(p.sku)}">
-            ${enCarrito ? 'Agregado ✓' : 'Agregar'}
+            ${enCarrito ? 'Agregado ✓' : `Agregar ${ICONO_CARRITO}`}
           </button>
         </div>
       </div>
     </article>
   `;
+}
+
+// Lógica compartida del botón "Agregar", usada tanto en la tarjeta del
+// catálogo como en el modal de detalle: valida el color si el producto
+// lo requiere, antes de mandarlo al carrito.
+function manejarClicAgregar(boton, contenedor) {
+  const sku = boton.dataset.sku;
+  const colorSelect = contenedor.querySelector('.color-select');
+  const color = colorSelect ? colorSelect.value : '';
+
+  if (colorSelect && !color) {
+    colorSelect.focus();
+    colorSelect.classList.add('color-select-error');
+    setTimeout(() => colorSelect.classList.remove('color-select-error'), 1200);
+    return;
+  }
+
+  agregarAlCarrito(sku, color);
+
+  if (colorSelect) {
+    boton.innerHTML = 'Agregado ✓';
+  }
 }
 
 /* ---------------------------------------------
@@ -282,6 +417,8 @@ function tarjetaProducto(p) {
 function abrirModal(sku) {
   const p = PRODUCTOS.find(x => x.sku === sku);
   if (!p) return;
+
+  const enCarrito = !p.opcionesColor && CARRITO.some(i => i.sku === p.sku);
 
   const contenido = document.getElementById('modalContent');
   contenido.innerHTML = `
@@ -292,12 +429,14 @@ function abrirModal(sku) {
     <div class="modal-info">
       <h2>${escapeHtml(p.nombre)}</h2>
       <div class="product-sku">SKU ${escapeHtml(p.sku)}</div>
-      ${p.categorias.length ? `<div class="product-tags">${p.categorias.map(c => `<span class="product-tag">${escapeHtml(c)}</span>`).join('')}</div>` : ''}
+      ${p.cantidadPorPieza ? `<div class="product-quantity">Cantidad: ${escapeHtml(p.cantidadPorPieza)}</div>` : ''}
+      ${p.categorias.length ? `<div class="product-tags">${p.categorias.map(c => `<span class="product-tag">${escapeHtml(etiquetaCategoria(c))}</span>`).join('')}</div>` : ''}
       <p class="modal-desc">${escapeHtml(p.descripcion) || 'Sin descripción.'}</p>
+      ${p.opcionesColor ? opcionesColorHTML(p.sku) : ''}
       <div class="modal-footer">
         <span class="product-price">${formatoPrecio(p.precio)}</span>
-        <button class="add-btn" id="modalAddBtn" data-sku="${escapeAttr(p.sku)}">
-          ${CARRITO.some(i => i.sku === p.sku) ? 'Agregado ✓' : 'Agregar'}
+        <button class="add-btn ${enCarrito ? 'added' : ''}" id="modalAddBtn" data-sku="${escapeAttr(p.sku)}">
+          ${enCarrito ? 'Agregado ✓' : `Agregar ${ICONO_CARRITO}`}
         </button>
       </div>
     </div>
@@ -318,8 +457,7 @@ function abrirModal(sku) {
   }
 
   document.getElementById('modalAddBtn').addEventListener('click', (ev) => {
-    agregarAlCarrito(sku);
-    ev.target.textContent = 'Agregado ✓';
+    manejarClicAgregar(ev.currentTarget, contenido);
   });
 
   document.getElementById('modalOverlay').classList.add('open');
@@ -330,49 +468,15 @@ function cerrarModal() {
 }
 
 /* ---------------------------------------------
-   5c) COLORES DE FILAMENTO DISPONIBLES
+   6) CARRITO
+   Cada línea del carrito se identifica por SKU + color (si aplica),
+   así un mismo producto puede estar en el carrito en varios colores
+   a la vez, cada uno como renglón independiente.
 --------------------------------------------- */
-async function cargarColores() {
-  const grid = document.getElementById('coloresGrid');
-  const seccion = document.querySelector('.colores-section');
-  if (!grid) return;
-
-  try {
-    const res = await fetch(urlCSV(CONFIG.SHEET_COLORES));
-    if (!res.ok) throw new Error('No se pudo leer la pestaña de Colores');
-    const csvText = await res.text();
-    const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
-
-    const colores = parsed.data
-      .map(row => ({
-        nombre: (row['Color'] || '').trim(),
-        foto: resolverFoto((row['Foto'] || '').trim(), CONFIG.CARPETA_COLORES),
-        disponible: (row['Disponible'] || 'si').toString().trim().toLowerCase() !== 'no',
-      }))
-      .filter(c => c.nombre);
-
-    if (!colores.length) {
-      seccion.style.display = 'none';
-      return;
-    }
-
-    grid.innerHTML = colores.map(c => `
-      <div class="color-swatch ${c.disponible ? '' : 'agotado'}">
-        <img src="${escapeAttr(c.foto)}" alt="${escapeAttr(c.nombre)}" loading="lazy">
-        <span class="color-name">${escapeHtml(c.nombre)}</span>
-        <span class="color-status">${c.disponible ? 'Disponible' : 'Agotado'}</span>
-      </div>
-    `).join('');
-  } catch (err) {
-    console.error(err);
-    // Si no existe la pestaña "Colores" todavía, simplemente se oculta la sección.
-    seccion.style.display = 'none';
-  }
+function claveCarrito(sku, color) {
+  return color ? `${sku}::${color}` : sku;
 }
 
-/* ---------------------------------------------
-   6) CARRITO
---------------------------------------------- */
 function cargarCarrito() {
   try {
     return JSON.parse(localStorage.getItem('catalogo3d_carrito')) || [];
@@ -385,11 +489,12 @@ function guardarCarrito() {
   localStorage.setItem('catalogo3d_carrito', JSON.stringify(CARRITO));
 }
 
-function agregarAlCarrito(sku) {
+function agregarAlCarrito(sku, color = '') {
   const producto = PRODUCTOS.find(p => p.sku === sku);
   if (!producto) return;
 
-  const item = CARRITO.find(i => i.sku === sku);
+  const clave = claveCarrito(sku, color);
+  const item = CARRITO.find(i => claveCarrito(i.sku, i.color) === clave);
   if (item) {
     item.cantidad += 1;
   } else {
@@ -398,29 +503,29 @@ function agregarAlCarrito(sku) {
       nombre: producto.nombre,
       precio: producto.precio,
       foto: producto.fotos[0],
+      color: color || '',
       cantidad: 1,
     });
   }
   guardarCarrito();
   renderCarrito();
-  renderCatalogo();
   avisarCarrito();
 }
 
-function cambiarCantidad(sku, delta) {
-  const item = CARRITO.find(i => i.sku === sku);
+function cambiarCantidad(clave, delta) {
+  const item = CARRITO.find(i => claveCarrito(i.sku, i.color) === clave);
   if (!item) return;
   item.cantidad += delta;
   if (item.cantidad <= 0) {
-    CARRITO = CARRITO.filter(i => i.sku !== sku);
+    CARRITO = CARRITO.filter(i => claveCarrito(i.sku, i.color) !== clave);
   }
   guardarCarrito();
   renderCarrito();
   renderCatalogo();
 }
 
-function quitarDelCarrito(sku) {
-  CARRITO = CARRITO.filter(i => i.sku !== sku);
+function quitarDelCarrito(clave) {
+  CARRITO = CARRITO.filter(i => claveCarrito(i.sku, i.color) !== clave);
   guardarCarrito();
   renderCarrito();
   renderCatalogo();
@@ -437,28 +542,31 @@ function renderCarrito() {
   if (!CARRITO.length) {
     itemsEl.innerHTML = `<div class="cart-empty">Aún no agregas productos.</div>`;
   } else {
-    itemsEl.innerHTML = CARRITO.map(i => `
+    itemsEl.innerHTML = CARRITO.map(i => {
+      const clave = claveCarrito(i.sku, i.color);
+      return `
       <div class="cart-item">
         <img src="${escapeAttr(i.foto)}" alt="${escapeAttr(i.nombre)}">
         <div class="cart-item-info">
           <div class="cart-item-name">${escapeHtml(i.nombre)}</div>
-          <div class="cart-item-sku">SKU ${escapeHtml(i.sku)}</div>
+          <div class="cart-item-sku">SKU ${escapeHtml(i.sku)}${i.color ? ' · Color: ' + escapeHtml(i.color) : ''}</div>
           <div class="cart-item-controls">
-            <button class="qty-btn" data-sku="${escapeAttr(i.sku)}" data-delta="-1">–</button>
+            <button class="qty-btn" data-clave="${escapeAttr(clave)}" data-delta="-1">–</button>
             <span>${i.cantidad}</span>
-            <button class="qty-btn" data-sku="${escapeAttr(i.sku)}" data-delta="1">+</button>
-            <button class="cart-remove" data-sku="${escapeAttr(i.sku)}">quitar</button>
+            <button class="qty-btn" data-clave="${escapeAttr(clave)}" data-delta="1">+</button>
+            <button class="cart-remove" data-clave="${escapeAttr(clave)}">quitar</button>
           </div>
         </div>
         <div class="cart-item-price">${formatoPrecio(i.precio * i.cantidad)}</div>
       </div>
-    `).join('');
+    `;
+    }).join('');
 
     itemsEl.querySelectorAll('.qty-btn').forEach(btn => {
-      btn.addEventListener('click', () => cambiarCantidad(btn.dataset.sku, parseInt(btn.dataset.delta)));
+      btn.addEventListener('click', () => cambiarCantidad(btn.dataset.clave, parseInt(btn.dataset.delta)));
     });
     itemsEl.querySelectorAll('.cart-remove').forEach(btn => {
-      btn.addEventListener('click', () => quitarDelCarrito(btn.dataset.sku));
+      btn.addEventListener('click', () => quitarDelCarrito(btn.dataset.clave));
     });
   }
 
@@ -471,7 +579,7 @@ function abrirCarrito() {
   document.getElementById('cartOverlay').classList.add('open');
 }
 
-// Le da un pequeño destello al botón de "Pedido" cada vez que se agrega
+// Le da un pequeño destello al botón de "Carrito" cada vez que se agrega
 // un producto, en vez de abrir el carrito completo (se sentía invasivo).
 function avisarCarrito() {
   const boton = document.getElementById('cartToggle');
@@ -573,7 +681,11 @@ function cerrarConfirmacion() {
 }
 
 function abrirWhatsApp(orderId, total, items) {
-  const listado = items.map(i => `- ${i.nombre} (SKU: ${i.sku}) x${i.cantidad}`).join('\n');
+  const listado = items.map(i => {
+    const colorTxt = i.color ? ` - Color: ${i.color}` : '';
+    return `- ${i.nombre}${colorTxt} (SKU: ${i.sku}) x${i.cantidad}`;
+  }).join('\n');
+
   const mensaje =
     `¡Hola! Acabo de hacer un pedido con el número de orden (${orderId})\n\n` +
     `${listado}\n\n` +
@@ -664,7 +776,25 @@ function escapeAttr(str) {
 }
 
 /* ---------------------------------------------
-   9) EVENTOS INICIALES
+   9) ENCABEZADO: logo, descripción y botón de WhatsApp flotante
+--------------------------------------------- */
+function iniciarEncabezado() {
+  if (CONFIG.LOGO_URL) {
+    const logo = document.getElementById('brandLogo');
+    logo.src = CONFIG.LOGO_URL;
+    logo.style.display = 'block';
+  }
+
+  document.getElementById('heroDesc').textContent = CONFIG.DESCRIPCION_SITIO;
+  document.getElementById('heroExtra').textContent =
+    `${CONFIG.MENSAJE_MATERIAL} ${CONFIG.MENSAJE_ENVIO}`;
+
+  const whatsappFloat = document.getElementById('whatsappFloat');
+  whatsappFloat.href = `https://wa.me/${CONFIG.WHATSAPP_NUMBER}?text=${encodeURIComponent(CONFIG.WHATSAPP_MENSAJE_CONTACTO)}`;
+}
+
+/* ---------------------------------------------
+   10) EVENTOS INICIALES
 --------------------------------------------- */
 document.getElementById('cartToggle').addEventListener('click', abrirCarrito);
 document.getElementById('cartClose').addEventListener('click', cerrarCarrito);
@@ -693,6 +823,13 @@ document.getElementById('novNext').addEventListener('click', () => {
   document.getElementById('novedadesTrack').scrollBy({ left: 220, behavior: 'smooth' });
 });
 
-renderCarrito();
-cargarProductos();
-cargarColores();
+async function iniciar() {
+  iniciarEncabezado();
+  renderCarrito();
+  // Los colores se cargan primero porque los selectores de color de
+  // cada producto los necesitan listos antes de dibujar el catálogo.
+  await cargarColores();
+  await cargarProductos();
+}
+
+iniciar();

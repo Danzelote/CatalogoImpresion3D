@@ -62,12 +62,24 @@ img { max-width: 100%; display: block; }
 
 .brand {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 10px;
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 1.35rem;
   letter-spacing: -0.01em;
+}
+
+.brand-logo {
+  height: 32px;
+  width: auto;
+  border-radius: 6px;
+}
+
+.icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
 }
 
 .brand .layer-mark {
@@ -124,13 +136,48 @@ img { max-width: 100%; display: block; }
 
 /* ---------- Categories ---------- */
 
+.category-filters {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .category-bar {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  padding: 20px 24px 4px;
-  max-width: 1200px;
-  margin: 0 auto;
+}
+
+.subcategory-bar {
+  display: none;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding-left: 4px;
+}
+
+.subcategory-bar.visible { display: flex; }
+
+.subcategory-chip {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  background: transparent;
+  border: 1px dashed var(--line);
+  color: var(--ink-muted);
+  padding: 5px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.subcategory-chip:hover { border-color: var(--teal); color: var(--ink); }
+
+.subcategory-chip.active {
+  background: var(--teal);
+  border-color: var(--teal);
+  border-style: solid;
+  color: #17191c;
+  font-weight: 600;
 }
 
 .category-chip {
@@ -298,6 +345,9 @@ img { max-width: 100%; display: block; }
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .add-btn:hover { background: var(--filament); color: #17191c; }
@@ -515,21 +565,32 @@ img { max-width: 100%; display: block; }
   text-align: center;
 }
 
-/* ---------- Aviso de material ---------- */
+/* ---------- Hero / intro ---------- */
 
-.material-banner {
-  background: var(--panel-raised);
-  border-bottom: 1px solid var(--line);
-  color: var(--ink-muted);
-  font-size: 0.82rem;
+.hero {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 22px 24px 6px;
   text-align: center;
-  padding: 9px 16px;
 }
 
-.material-banner strong {
-  color: var(--filament);
-  font-family: var(--font-mono);
+.hero-desc {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 8px;
+  line-height: 1.4;
 }
+
+.hero-extra {
+  font-size: 0.82rem;
+  color: var(--ink-muted);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.hero-extra strong { color: var(--filament); font-family: var(--font-mono); }
 
 .howto-banner {
   text-align: center;
@@ -537,6 +598,42 @@ img { max-width: 100%; display: block; }
   color: var(--ink-muted);
   padding: 8px 16px;
   border-bottom: 1px solid var(--line);
+  margin-top: 14px;
+}
+
+/* ---------- Botón flotante de WhatsApp ---------- */
+
+.whatsapp-float {
+  position: fixed;
+  bottom: 22px;
+  right: 22px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #25D366;
+  color: #17191c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  z-index: 25;
+  transition: transform 0.15s ease;
+}
+
+.whatsapp-float:hover { transform: scale(1.08); }
+
+/* ---------- Títulos de sección reutilizables ---------- */
+
+.section-title {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  margin: 0 0 4px;
+}
+
+.section-hint {
+  color: var(--ink-muted);
+  font-size: 0.85rem;
+  margin: 0 0 16px;
 }
 
 /* ---------- Novedades (carrusel) ---------- */
@@ -634,7 +731,7 @@ img { max-width: 100%; display: block; }
   flex-wrap: wrap;
 }
 
-.toolbar .category-bar {
+.toolbar .category-filters {
   padding: 0;
   margin: 0;
   flex: 1;
@@ -649,6 +746,12 @@ img { max-width: 100%; display: block; }
   color: var(--ink-muted);
 }
 
+.sort-control label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
 .sort-control select {
   background: var(--panel);
   border: 1px solid var(--line);
@@ -660,69 +763,56 @@ img { max-width: 100%; display: block; }
   cursor: pointer;
 }
 
-/* ---------- Colores disponibles ---------- */
+/* ---------- Selector de color y cantidad por producto ---------- */
 
-.colores-section {
-  max-width: 1200px;
-  margin: 30px auto 0;
-  padding: 0 24px 40px;
+.color-select-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.section-title {
-  font-family: var(--font-display);
-  font-size: 1.2rem;
-  margin: 0 0 4px;
-}
-
-.section-hint {
-  color: var(--ink-muted);
-  font-size: 0.85rem;
-  margin: 0 0 16px;
-}
-
-.colores-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-  gap: 14px;
-}
-
-.color-swatch {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  overflow: hidden;
-  text-align: center;
-  padding-bottom: 10px;
-}
-
-.color-swatch img {
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  object-fit: cover;
-  background: var(--bed-line);
-}
-
-.color-name {
-  display: block;
-  font-size: 0.8rem;
-  font-weight: 600;
-  margin-top: 8px;
-}
-
-.color-status {
-  display: block;
+.color-select-wrap label {
   font-family: var(--font-mono);
-  font-size: 0.65rem;
+  font-size: 0.68rem;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.color-select {
+  background: var(--panel-raised);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  padding: 7px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  width: 100%;
+}
+
+.color-select:focus { outline: none; border-color: var(--filament); }
+
+.color-select.color-select-error {
+  border-color: var(--danger);
+  animation: colorShake 0.3s ease;
+}
+
+@keyframes colorShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+.color-hint {
+  font-size: 0.68rem;
+  color: var(--ink-muted);
+}
+
+.product-quantity {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
   color: var(--teal);
-  margin-top: 2px;
-}
-
-.color-swatch.agotado {
-  opacity: 0.5;
-}
-
-.color-swatch.agotado .color-status {
-  color: var(--danger);
 }
 
 /* ---------- Modal de producto ---------- */
@@ -1005,6 +1095,8 @@ img { max-width: 100%; display: block; }
 
 @media (max-width: 640px) {
   .site-header { padding: 14px 16px; }
+  .hero { padding: 18px 16px 4px; }
+  .whatsapp-float { width: 50px; height: 50px; bottom: 16px; right: 16px; }
   .toolbar {
     padding: 16px 16px 4px;
     flex-direction: column;
