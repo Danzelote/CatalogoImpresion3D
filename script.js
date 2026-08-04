@@ -21,7 +21,7 @@ const CONFIG = {
 
   // Número de WhatsApp donde llegan los pedidos, con código de país,
   // solo dígitos (ej. México: 52 + 10 dígitos)
-  WHATSAPP_NUMBER: '5531605449',
+  WHATSAPP_NUMBER: '525531605449',
 
   // Símbolo/formato de moneda
   MONEDA: 'MXN',
