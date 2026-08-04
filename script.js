@@ -28,22 +28,25 @@ const CONFIG = {
 
   // Carpeta donde subes las fotos dentro del repo (ver README)
   CARPETA_FOTOS: 'fotos/',
-};
 
+  // Carpeta donde subes las fotos de los carretes de colores
+  CARPETA_COLORES: 'ColoresFilamentos/',
+};
+ 
 /* ---------------------------------------------
    2) ESTADO
 --------------------------------------------- */
 let PRODUCTOS = [];
 let CATEGORIA_ACTIVA = 'todas';
 let CARRITO = cargarCarrito();
-
+ 
 /* ---------------------------------------------
    3) CARGA DE DATOS DESDE GOOGLE SHEETS
 --------------------------------------------- */
 function urlCSV(sheetName) {
   return `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
 }
-
+ 
 async function cargarProductos() {
   const catalogEl = document.getElementById('catalog');
   try {
@@ -51,11 +54,11 @@ async function cargarProductos() {
     if (!res.ok) throw new Error('No se pudo leer el Sheet');
     const csvText = await res.text();
     const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
-
+ 
     PRODUCTOS = parsed.data
       .map(normalizarProducto)
       .filter(p => p.nombre && p.activo !== false);
-
+ 
     renderCategorias();
     renderCatalogo();
   } catch (err) {
@@ -63,18 +66,18 @@ async function cargarProductos() {
     catalogEl.innerHTML = `<div class="state-msg">No se pudo cargar el catálogo.<br>Revisa que el Google Sheet sea público ("Cualquiera con el enlace: Lector") y que el SHEET_ID en script.js sea correcto.</div>`;
   }
 }
-
+ 
 function normalizarProducto(row) {
   const fotos = [row['Foto1'], row['Foto2'], row['Foto3']]
     .map(f => (f || '').trim())
     .filter(Boolean)
     .map(resolverFoto);
-
+ 
   const categorias = (row['Categorias'] || row['Categorías'] || '')
     .split(',')
     .map(c => c.trim())
     .filter(Boolean);
-
+ 
   return {
     nombre: (row['Nombre'] || '').trim(),
     sku: (row['SKU'] || '').trim(),
@@ -85,15 +88,15 @@ function normalizarProducto(row) {
     activo: (row['Activo'] || 'si').toString().trim().toLowerCase() !== 'no',
   };
 }
-
+ 
 // Si en el Sheet pusiste solo el nombre del archivo (ej. "dragon.jpg"),
-// lo resuelve a la carpeta del repo. Si ya pusiste una URL completa
+// lo resuelve a la carpeta indicada del repo. Si ya pusiste una URL completa
 // (http...), la deja igual.
-function resolverFoto(valor) {
+function resolverFoto(valor, carpeta = CONFIG.CARPETA_FOTOS) {
   if (/^https?:\/\//i.test(valor)) return valor;
-  return CONFIG.CARPETA_FOTOS + valor;
+  return carpeta + valor;
 }
-
+ 
 /* ---------------------------------------------
    4) CATEGORÍAS AUTOMÁTICAS
 --------------------------------------------- */
@@ -101,15 +104,15 @@ function renderCategorias() {
   const bar = document.getElementById('categoryBar');
   const todas = new Set();
   PRODUCTOS.forEach(p => p.categorias.forEach(c => todas.add(c)));
-
+ 
   const categorias = ['todas', ...Array.from(todas).sort()];
-
+ 
   bar.innerHTML = categorias.map(c => `
     <button class="category-chip ${c === CATEGORIA_ACTIVA ? 'active' : ''}" data-cat="${escapeAttr(c)}">
       ${c === 'todas' ? 'Todas' : escapeHtml(c)}
     </button>
   `).join('');
-
+ 
   bar.querySelectorAll('.category-chip').forEach(btn => {
     btn.addEventListener('click', () => {
       CATEGORIA_ACTIVA = btn.dataset.cat;
@@ -118,7 +121,7 @@ function renderCategorias() {
     });
   });
 }
-
+ 
 /* ---------------------------------------------
    5) RENDER DEL CATÁLOGO
 --------------------------------------------- */
@@ -127,21 +130,21 @@ function renderCatalogo() {
   const lista = PRODUCTOS.filter(p =>
     CATEGORIA_ACTIVA === 'todas' || p.categorias.includes(CATEGORIA_ACTIVA)
   );
-
+ 
   if (!lista.length) {
     catalogEl.innerHTML = `<div class="state-msg">No hay productos en esta categoría todavía.</div>`;
     return;
   }
-
+ 
   catalogEl.innerHTML = lista.map(p => tarjetaProducto(p)).join('');
-
+ 
   catalogEl.querySelectorAll('.add-btn').forEach(btn => {
     btn.addEventListener('click', (ev) => {
       ev.stopPropagation();
       agregarAlCarrito(btn.dataset.sku);
     });
   });
-
+ 
   catalogEl.querySelectorAll('.product-photos').forEach(el => {
     let idx = 0;
     const imgs = el.querySelectorAll('img');
@@ -157,12 +160,12 @@ function renderCatalogo() {
       });
     }
   });
-
+ 
   catalogEl.querySelectorAll('.product-card').forEach(card => {
     card.addEventListener('click', () => abrirModal(card.dataset.sku));
   });
 }
-
+ 
 function tarjetaProducto(p) {
   const enCarrito = CARRITO.some(i => i.sku === p.sku);
   return `
@@ -186,14 +189,14 @@ function tarjetaProducto(p) {
     </article>
   `;
 }
-
+ 
 /* ---------------------------------------------
    5b) MODAL DE DETALLE (vista más grande)
 --------------------------------------------- */
 function abrirModal(sku) {
   const p = PRODUCTOS.find(x => x.sku === sku);
   if (!p) return;
-
+ 
   const contenido = document.getElementById('modalContent');
   contenido.innerHTML = `
     <div class="modal-photos">
@@ -213,7 +216,7 @@ function abrirModal(sku) {
       </div>
     </div>
   `;
-
+ 
   const fotosEl = contenido.querySelector('.modal-photos');
   const imgs = fotosEl.querySelectorAll('img');
   const dots = fotosEl.querySelectorAll('.photo-dots span');
@@ -227,19 +230,19 @@ function abrirModal(sku) {
       dots[idx] && dots[idx].classList.add('active');
     });
   }
-
+ 
   document.getElementById('modalAddBtn').addEventListener('click', (ev) => {
     agregarAlCarrito(sku);
     ev.target.textContent = 'Agregado ✓';
   });
-
+ 
   document.getElementById('modalOverlay').classList.add('open');
 }
-
+ 
 function cerrarModal() {
   document.getElementById('modalOverlay').classList.remove('open');
 }
-
+ 
 /* ---------------------------------------------
    5c) COLORES DE FILAMENTO DISPONIBLES
 --------------------------------------------- */
@@ -247,26 +250,26 @@ async function cargarColores() {
   const grid = document.getElementById('coloresGrid');
   const seccion = document.querySelector('.colores-section');
   if (!grid) return;
-
+ 
   try {
     const res = await fetch(urlCSV(CONFIG.SHEET_COLORES));
     if (!res.ok) throw new Error('No se pudo leer la pestaña de Colores');
     const csvText = await res.text();
     const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
-
+ 
     const colores = parsed.data
       .map(row => ({
         nombre: (row['Color'] || '').trim(),
-        foto: resolverFoto((row['Foto'] || '').trim()),
+        foto: resolverFoto((row['Foto'] || '').trim(), CONFIG.CARPETA_COLORES),
         disponible: (row['Disponible'] || 'si').toString().trim().toLowerCase() !== 'no',
       }))
       .filter(c => c.nombre);
-
+ 
     if (!colores.length) {
       seccion.style.display = 'none';
       return;
     }
-
+ 
     grid.innerHTML = colores.map(c => `
       <div class="color-swatch ${c.disponible ? '' : 'agotado'}">
         <img src="${escapeAttr(c.foto)}" alt="${escapeAttr(c.nombre)}" loading="lazy">
@@ -280,7 +283,7 @@ async function cargarColores() {
     seccion.style.display = 'none';
   }
 }
-
+ 
 /* ---------------------------------------------
    6) CARRITO
 --------------------------------------------- */
@@ -291,15 +294,15 @@ function cargarCarrito() {
     return [];
   }
 }
-
+ 
 function guardarCarrito() {
   localStorage.setItem('catalogo3d_carrito', JSON.stringify(CARRITO));
 }
-
+ 
 function agregarAlCarrito(sku) {
   const producto = PRODUCTOS.find(p => p.sku === sku);
   if (!producto) return;
-
+ 
   const item = CARRITO.find(i => i.sku === sku);
   if (item) {
     item.cantidad += 1;
@@ -317,7 +320,7 @@ function agregarAlCarrito(sku) {
   renderCatalogo();
   abrirCarrito();
 }
-
+ 
 function cambiarCantidad(sku, delta) {
   const item = CARRITO.find(i => i.sku === sku);
   if (!item) return;
@@ -329,22 +332,22 @@ function cambiarCantidad(sku, delta) {
   renderCarrito();
   renderCatalogo();
 }
-
+ 
 function quitarDelCarrito(sku) {
   CARRITO = CARRITO.filter(i => i.sku !== sku);
   guardarCarrito();
   renderCarrito();
   renderCatalogo();
 }
-
+ 
 function renderCarrito() {
   const itemsEl = document.getElementById('cartItems');
   const countEl = document.getElementById('cartCount');
   const totalEl = document.getElementById('cartTotal');
-
+ 
   const totalItems = CARRITO.reduce((a, i) => a + i.cantidad, 0);
   countEl.textContent = totalItems;
-
+ 
   if (!CARRITO.length) {
     itemsEl.innerHTML = `<div class="cart-empty">Aún no agregas productos.</div>`;
   } else {
@@ -364,7 +367,7 @@ function renderCarrito() {
         <div class="cart-item-price">${formatoPrecio(i.precio * i.cantidad)}</div>
       </div>
     `).join('');
-
+ 
     itemsEl.querySelectorAll('.qty-btn').forEach(btn => {
       btn.addEventListener('click', () => cambiarCantidad(btn.dataset.sku, parseInt(btn.dataset.delta)));
     });
@@ -372,33 +375,33 @@ function renderCarrito() {
       btn.addEventListener('click', () => quitarDelCarrito(btn.dataset.sku));
     });
   }
-
+ 
   const total = CARRITO.reduce((a, i) => a + i.precio * i.cantidad, 0);
   totalEl.textContent = formatoPrecio(total);
 }
-
+ 
 function abrirCarrito() {
   document.getElementById('cartDrawer').classList.add('open');
   document.getElementById('cartOverlay').classList.add('open');
 }
-
+ 
 function cerrarCarrito() {
   document.getElementById('cartDrawer').classList.remove('open');
   document.getElementById('cartOverlay').classList.remove('open');
 }
-
+ 
 /* ---------------------------------------------
    7) ENVÍO DE PEDIDO → Apps Script → WhatsApp
 --------------------------------------------- */
 async function ordenar() {
   if (!CARRITO.length) return;
-
+ 
   const orderBtn = document.getElementById('orderBtn');
   orderBtn.disabled = true;
   orderBtn.textContent = 'Generando pedido…';
-
+ 
   const total = CARRITO.reduce((a, i) => a + i.precio * i.cantidad, 0);
-
+ 
   try {
     const res = await fetch(CONFIG.APPS_SCRIPT_URL, {
       method: 'POST',
@@ -407,11 +410,11 @@ async function ordenar() {
       body: JSON.stringify({ items: CARRITO, total }),
     });
     const data = await res.json();
-
+ 
     if (!data.ok) throw new Error(data.error || 'Error al registrar el pedido');
-
+ 
     abrirWhatsApp(data.orderId, total);
-
+ 
     CARRITO = [];
     guardarCarrito();
     renderCarrito();
@@ -425,35 +428,35 @@ async function ordenar() {
     orderBtn.textContent = 'Ordenar por WhatsApp';
   }
 }
-
+ 
 function abrirWhatsApp(orderId, total) {
   const listado = CARRITO.map(i => `- ${i.nombre} (SKU: ${i.sku}) x${i.cantidad}`).join('\n');
   const mensaje =
     `Hola, me gustaría realizar un pedido con el número de orden ${orderId}\n\n` +
     `${listado}\n\n` +
     `Total: ${formatoPrecio(total)}`;
-
+ 
   const url = `https://wa.me/${CONFIG.WHATSAPP_NUMBER}?text=${encodeURIComponent(mensaje)}`;
   window.open(url, '_blank');
 }
-
+ 
 /* ---------------------------------------------
    8) UTILIDADES
 --------------------------------------------- */
 function formatoPrecio(n) {
   return new Intl.NumberFormat('es-MX', { style: 'currency', currency: CONFIG.MONEDA }).format(n);
 }
-
+ 
 function escapeHtml(str) {
   return (str || '').replace(/[&<>"']/g, c => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
   }[c]));
 }
-
+ 
 function escapeAttr(str) {
   return escapeHtml(str);
 }
-
+ 
 /* ---------------------------------------------
    9) EVENTOS INICIALES
 --------------------------------------------- */
@@ -465,7 +468,8 @@ document.getElementById('modalClose').addEventListener('click', cerrarModal);
 document.getElementById('modalOverlay').addEventListener('click', (ev) => {
   if (ev.target.id === 'modalOverlay') cerrarModal();
 });
-
+ 
 renderCarrito();
 cargarProductos();
 cargarColores();
+ 
