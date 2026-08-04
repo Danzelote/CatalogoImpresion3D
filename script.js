@@ -8,7 +8,7 @@
 --------------------------------------------- */
 const CONFIG = {
   // ID del Google Sheet (está en la URL: .../d/ESTE_ID/edit)
-  SHEET_ID: '1wyY5BBbm5ZJBYXs93H21l_2tRvCrYmWrbX_RLUrZjzs',
+  SHEET_ID: 'TU_SHEET_ID_AQUI',
 
   // Nombre exacto de la pestaña de productos
   SHEET_PRODUCTOS: 'Productos',
@@ -17,11 +17,11 @@ const CONFIG = {
   SHEET_COLORES: 'Colores',
 
   // URL del Apps Script publicado como Web App (ver README)
-  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbyx2v7w4F13VmmqHiU8GIDr1yto5ZwmPSiIOWoTPbVYBnz4Buxxvgses-23y-EzuZI/exec',
+  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/TU_DEPLOYMENT_ID/exec',
 
   // Número de WhatsApp donde llegan los pedidos, con código de país,
   // solo dígitos (ej. México: 52 + 10 dígitos)
-  WHATSAPP_NUMBER: '525531605449',
+  WHATSAPP_NUMBER: '5215512345678',
 
   // Símbolo/formato de moneda
   MONEDA: 'MXN',
@@ -118,7 +118,10 @@ function resolverFoto(valor, carpeta = CONFIG.CARPETA_FOTOS) {
 
   if (valor.includes('drive.google.com') || /^[a-zA-Z0-9_-]{20,}$/.test(valor.trim())) {
     const id = extraerIdDrive(valor);
-    if (id) return `https://lh3.googleusercontent.com/d/${id}`;
+    // =w800 le pide a Drive una versión ya redimensionada a 800px de ancho,
+    // en vez de la foto original a resolución completa — mucho más rápido
+    // de cargar en datos móviles, sin perderse nitidez en pantalla.
+    if (id) return `https://lh3.googleusercontent.com/d/${id}=w800`;
   }
 
   if (/^https?:\/\//i.test(valor)) return valor;

@@ -995,9 +995,22 @@ img { max-width: 100%; display: block; }
 
 @media (max-width: 640px) {
   .site-header { padding: 14px 16px; }
-  .toolbar { padding: 16px 16px 4px; }
+  .toolbar {
+    padding: 16px 16px 4px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .sort-control { justify-content: space-between; }
+  .sort-control select { flex: 1; }
   .novedades-section { padding: 0 16px; }
   .novedad-card { flex: 0 0 150px; }
   .catalog { padding: 16px 16px 60px; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
   .product-body { padding: 12px; gap: 6px; }
+
+  /* Botones más grandes para tocar cómodo con el dedo */
+  .qty-btn { width: 34px; height: 34px; font-size: 1rem; }
+  .carousel-btn { width: 38px; height: 38px; font-size: 1.3rem; }
+  .add-btn { padding: 10px 16px; }
+  .cart-remove { padding: 6px 0; display: inline-block; }
+  .modal-close { width: 40px; height: 40px; }
 }
