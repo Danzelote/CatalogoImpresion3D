@@ -29,7 +29,7 @@ Crea un Sheet nuevo con **tres pestañas**: Productos, Colores y Pedidos.
 
 ### Pestaña "Productos"
 
-| Nombre | SKU | Foto1 | Foto2 | Foto3 | Descripcion | Precio | Categorias | Activo | Novedades | Opciones de color | Cantidad |
+| Nombre | SKU | Foto1 | Foto2 | Foto3 | Descripcion | Precio | Categorias | Activo | Novedades | Opciones de color | Piezas por pedido |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Dragón articulado | *(se genera solo)* | (link de Drive) | | | Dragón articulado, 25cm | 350 | Figuras > Fantasía | si | si | si | 1 |
 
@@ -40,7 +40,7 @@ Crea un Sheet nuevo con **tres pestañas**: Productos, Colores y Pedidos.
 - **Activo**: escribe `si` para que el producto se muestre. Si lo dejas **vacío o con cualquier otra cosa, no aparece en la página** — es la forma de tenerlo guardado sin publicarlo todavía.
 - **Novedades**: pon `si` para que aparezca en el carrusel de "Novedades" hasta arriba. Columna opcional.
 - **Opciones de color**: pon `si` para que ese producto muestre un selector de color (tomado de la pestaña Colores) antes del botón de agregar. Si lo dejas vacío, el producto no pide color.
-- **Cantidad**: opcional, texto libre. Se muestra en la tarjeta como "Cantidad: X" — útil para aclarar cuando un producto se vende en set de varias piezas (ej. "5 piezas").
+- **Piezas por pedido**: opcional, texto libre (ej. "5 piezas", "Par", "1 pieza"). Se muestra en la tarjeta como "Piezas por pedido: X" — para que quede claro cuántas piezas trae el precio, sin que se confunda con la cantidad que el cliente elige en el carrito.
 
 ### Pestaña "Colores"
 
@@ -111,6 +111,8 @@ const CONFIG = {
 1. Comparte la carpeta principal donde tienes todo (ej. `CatalogoImpresiones3D`) como pública: clic derecho → **Compartir** → cambia el acceso general a **"Cualquier usuario con el enlace"**, rol **Lector**. Esto aplica automáticamente a todo lo que tengas adentro — no hace falta repetirlo por cada archivo.
 2. Para cada foto: clic derecho sobre el archivo en Drive → **Compartir** → **Copiar enlace**.
 3. Pega ese link completo (el largo, con `https://drive.google.com/file/d/...`) en las columnas Foto1/Foto2/Foto3 del Sheet, o en `LOGO_URL` para el logo. La web reconoce automáticamente que es un link de Drive y lo convierte al formato que sí puede mostrarse en una página web.
+
+**Ojo con los "chips inteligentes":** si arrastras el archivo directo desde Drive a la celda, o Sheets te lo convierte automáticamente en una tarjetita con icono de archivo (en vez de texto normal), esa celda **no sirve** — Sheets no exporta el link real de esos chips, solo el nombre del archivo, y la foto no va a cargar. Para evitarlo, pega el link con **Ctrl+Shift+V** (pegar sin formato) en vez de Ctrl+V normal, y confirma que la celda se vea como texto plano de una URL larga, sin ningún ícono al inicio.
 
 Las imágenes ya solo se leen desde Drive o desde una URL externa completa — ya no hay carpeta local de fotos en el repo.
 

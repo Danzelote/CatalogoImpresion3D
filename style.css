@@ -779,6 +779,12 @@ img { max-width: 100%; display: block; }
   letter-spacing: 0.04em;
 }
 
+.color-select-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .color-select {
   background: var(--panel-raised);
   border: 1px solid var(--line);
@@ -788,8 +794,22 @@ img { max-width: 100%; display: block; }
   padding: 7px 10px;
   border-radius: 6px;
   cursor: pointer;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
 }
+
+.color-preview {
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: var(--bed-line);
+  border: 1px solid var(--line);
+  flex-shrink: 0;
+  display: none;
+}
+
+.color-preview.visible { display: block; }
 
 .color-select:focus { outline: none; border-color: var(--filament); }
 

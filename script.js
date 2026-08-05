@@ -8,18 +8,18 @@
 --------------------------------------------- */
 const CONFIG = {
   // ID del Google Sheet (está en la URL: .../d/ESTE_ID/edit)
-  SHEET_ID: '1wyY5BBbm5ZJBYXs93H21l_2tRvCrYmWrbX_RLUrZjzs',
+  SHEET_ID: 'TU_SHEET_ID_AQUI',
 
   // Nombres exactos de las pestañas
   SHEET_PRODUCTOS: 'Productos',
   SHEET_COLORES: 'Colores',
 
   // URL del Apps Script publicado como Web App (ver README)
-  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbyx2v7w4F13VmmqHiU8GIDr1yto5ZwmPSiIOWoTPbVYBnz4Buxxvgses-23y-EzuZI/exec',
+  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/TU_DEPLOYMENT_ID/exec',
 
   // Número de WhatsApp donde llegan los pedidos y las dudas de contacto,
   // con código de país, solo dígitos (ej. México: 52 + 10 dígitos)
-  WHATSAPP_NUMBER: '525531605449',
+  WHATSAPP_NUMBER: '5215512345678',
 
   // Mensaje predeterminado del botón flotante de contacto (dudas generales,
   // no pedidos — esos usan su propio mensaje con número de orden)
@@ -30,7 +30,7 @@ const CONFIG = {
 
   // URL de la imagen de tu logotipo (Drive o cualquier URL completa).
   // Si la dejas vacía, solo se muestra el texto "Catálogo 3D".
-  LOGO_URL: 'https://drive.google.com/file/d/1zHxQXHC1-_sLhD6HbiLaClyD6acicmmI/view?usp=share_link',
+  LOGO_URL: '',
 
   // Textos del encabezado — edítalos las veces que quieras sin tocar HTML.
   DESCRIPCION_SITIO: 'Piezas impresas en 3D, listas para recoger — no vendemos archivos STL.',
@@ -67,6 +67,7 @@ async function cargarColores() {
     COLORES_DISPONIBLES = parsed.data
       .map(row => ({
         nombre: (row['Color'] || '').trim(),
+        foto: resolverFoto((row['Foto'] || '').trim()),
         disponible: (row['Disponible'] || '').toString().trim().toLowerCase() === 'si',
       }))
       .filter(c => c.nombre && c.disponible);
@@ -131,7 +132,7 @@ function normalizarProducto(row) {
     activo: (row['Activo'] || '').toString().trim().toLowerCase() === 'si',
     novedad: (row['Novedades'] || '').toString().trim().toLowerCase() === 'si',
     opcionesColor: (row['Opciones de color'] || row['Opciones De Color'] || '').toString().trim().toLowerCase() === 'si',
-    cantidadPorPieza: (row['Cantidad'] || '').toString().trim(),
+    cantidadPorPieza: (row['Piezas por pedido'] || '').toString().trim(),
   };
 }
 
@@ -339,6 +340,7 @@ function renderCatalogo() {
   catalogEl.querySelectorAll('.color-select').forEach(sel => {
     sel.addEventListener('click', (ev) => ev.stopPropagation());
   });
+  vincularSelectColor(catalogEl);
 
   catalogEl.querySelectorAll('.product-card').forEach(card => {
     card.addEventListener('click', () => abrirModal(card.dataset.sku));
@@ -354,13 +356,37 @@ function opcionesColorHTML(sku) {
   return `
     <div class="color-select-wrap">
       <label>Color</label>
-      <select class="color-select" data-sku="${escapeAttr(sku)}">
-        <option value="">Elige un color</option>
-        ${COLORES_DISPONIBLES.map(c => `<option value="${escapeAttr(c.nombre)}">${escapeHtml(c.nombre)}</option>`).join('')}
-      </select>
+      <div class="color-select-row">
+        <select class="color-select" data-sku="${escapeAttr(sku)}">
+          <option value="">Elige un color</option>
+          ${COLORES_DISPONIBLES.map(c => `<option value="${escapeAttr(c.nombre)}">${escapeHtml(c.nombre)}</option>`).join('')}
+        </select>
+        <img class="color-preview" alt="Vista previa del color">
+      </div>
       <span class="color-hint">¿No ves tu color? Pregúntanos por WhatsApp.</span>
     </div>
   `;
+}
+
+// Cambia la miniatura junto al selector según el color elegido, usando
+// la foto de esa pestaña "Colores" del Sheet.
+function vincularSelectColor(contenedor) {
+  contenedor.querySelectorAll('.color-select-wrap').forEach(wrap => {
+    const select = wrap.querySelector('.color-select');
+    const preview = wrap.querySelector('.color-preview');
+    if (!select || !preview) return;
+
+    select.addEventListener('change', () => {
+      const color = COLORES_DISPONIBLES.find(c => c.nombre === select.value);
+      if (color && color.foto) {
+        preview.src = color.foto;
+        preview.classList.add('visible');
+      } else {
+        preview.classList.remove('visible');
+        preview.removeAttribute('src');
+      }
+    });
+  });
 }
 
 function tarjetaProducto(p) {
@@ -374,7 +400,7 @@ function tarjetaProducto(p) {
       <div class="product-body">
         <div class="product-name">${escapeHtml(p.nombre)}</div>
         <div class="product-sku">SKU ${escapeHtml(p.sku)}</div>
-        ${p.cantidadPorPieza ? `<div class="product-quantity">Cantidad: ${escapeHtml(p.cantidadPorPieza)}</div>` : ''}
+        ${p.cantidadPorPieza ? `<div class="product-quantity">Piezas por pedido: ${escapeHtml(p.cantidadPorPieza)}</div>` : ''}
         ${p.descripcion ? `<div class="product-desc">${escapeHtml(p.descripcion)}</div>` : ''}
         ${p.categorias.length ? `<div class="product-tags">${p.categorias.map(c => `<span class="product-tag">${escapeHtml(etiquetaCategoria(c))}</span>`).join('')}</div>` : ''}
         ${p.opcionesColor ? opcionesColorHTML(p.sku) : ''}
@@ -429,7 +455,7 @@ function abrirModal(sku) {
     <div class="modal-info">
       <h2>${escapeHtml(p.nombre)}</h2>
       <div class="product-sku">SKU ${escapeHtml(p.sku)}</div>
-      ${p.cantidadPorPieza ? `<div class="product-quantity">Cantidad: ${escapeHtml(p.cantidadPorPieza)}</div>` : ''}
+      ${p.cantidadPorPieza ? `<div class="product-quantity">Piezas por pedido: ${escapeHtml(p.cantidadPorPieza)}</div>` : ''}
       ${p.categorias.length ? `<div class="product-tags">${p.categorias.map(c => `<span class="product-tag">${escapeHtml(etiquetaCategoria(c))}</span>`).join('')}</div>` : ''}
       <p class="modal-desc">${escapeHtml(p.descripcion) || 'Sin descripción.'}</p>
       ${p.opcionesColor ? opcionesColorHTML(p.sku) : ''}
@@ -459,6 +485,8 @@ function abrirModal(sku) {
   document.getElementById('modalAddBtn').addEventListener('click', (ev) => {
     manejarClicAgregar(ev.currentTarget, contenido);
   });
+
+  vincularSelectColor(contenido);
 
   document.getElementById('modalOverlay').classList.add('open');
 }
