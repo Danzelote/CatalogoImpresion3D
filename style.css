@@ -867,11 +867,20 @@ img { max-width: 100%; display: block; }
 
 .modal-overlay.open .modal-box { transform: scale(1); }
 
+.modal-sticky-bar {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  justify-content: flex-end;
+  padding: 14px 14px 0;
+  pointer-events: none;
+  height: 0; /* no ocupa espacio propio, solo posiciona el botón */
+}
+
 .modal-close {
-  position: absolute;
-  top: 14px;
-  right: 14px;
-  background: rgba(23, 25, 28, 0.7);
+  pointer-events: auto;
+  background: rgba(23, 25, 28, 0.85);
   border: 1px solid var(--line);
   color: var(--ink);
   width: 34px;
@@ -880,7 +889,6 @@ img { max-width: 100%; display: block; }
   font-size: 1.3rem;
   line-height: 1;
   cursor: pointer;
-  z-index: 2;
 }
 
 .modal-content {
@@ -933,7 +941,8 @@ img { max-width: 100%; display: block; }
 
 @media (max-width: 640px) {
   .modal-content { grid-template-columns: 1fr; }
-  .modal-box { max-height: 92vh; }
+  .modal-box { max-height: 78vh; }
+  .modal-overlay { padding: 16px; }
 }
 
 /* ---------- Confirmación antes de WhatsApp ---------- */
@@ -1117,6 +1126,7 @@ img { max-width: 100%; display: block; }
   .site-header { padding: 14px 16px; }
   .hero { padding: 18px 16px 4px; }
   .whatsapp-float { width: 50px; height: 50px; bottom: 16px; right: 16px; }
+  .cart-drawer { width: calc(100% - 56px); }
   .toolbar {
     padding: 16px 16px 4px;
     flex-direction: column;
