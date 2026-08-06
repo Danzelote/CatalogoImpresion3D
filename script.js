@@ -35,7 +35,7 @@ const CONFIG = {
   // URL de una imagen de banner horizontal para el encabezado (Drive o
   // cualquier URL completa). Si la llenas, se muestra esa imagen en vez
   // del texto de abajo. Si la dejas vacía, se sigue viendo el texto.
-  BANNER_URL: 'https://drive.google.com/file/d/11241AuYQRLRGBpKwOJCTXOzbOsUdwmxM/view?usp=share_link',
+  BANNER_URL: 'https://drive.google.com/file/d/1lw-VuxMoLssqB7HgfZG7viBMaGD0bnpO/view?usp=share_link',
 
   // Textos del encabezado — edítalos las veces que quieras sin tocar HTML.
   DESCRIPCION_SITIO: 'Piezas impresas en 3D, listas para recoger — no vendemos archivos STL.',
