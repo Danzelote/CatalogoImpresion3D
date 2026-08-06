@@ -95,6 +95,7 @@ const CONFIG = {
   WHATSAPP_MENSAJE_CONTACTO: '¡Hola! Vi tu catálogo de impresiones 3D y tengo unas dudas.',
   MONEDA: 'MXN',
   LOGO_URL: '',
+  BANNER_URL: '',
   DESCRIPCION_SITIO: 'Piezas impresas en 3D, listas para recoger — no vendemos archivos STL.',
   MENSAJE_MATERIAL: 'Todas las piezas se imprimen en PLA. ¿Necesitas otro material? Se cotiza aparte por WhatsApp.',
   MENSAJE_ENVIO: 'Por ahora no hacemos envíos a domicilio: coordinamos un punto de recolección en CDMX.',
@@ -104,7 +105,8 @@ const CONFIG = {
 - **SHEET_ID**: la parte de la URL del Sheet entre `/d/` y `/edit`.
 - **WHATSAPP_MENSAJE_CONTACTO**: el mensaje que se manda al dar clic en el botón flotante de WhatsApp (dudas generales — los pedidos usan su propio mensaje con número de orden, ese no se toca aquí).
 - **LOGO_URL**: pega ahí el link de Drive de tu logo cuando lo tengas listo (mismo formato que las fotos de producto). Mientras esté vacío, el encabezado solo muestra el texto "Catálogo 3D".
-- **DESCRIPCION_SITIO / MENSAJE_MATERIAL / MENSAJE_ENVIO**: los textos que aparecen arriba de la página, junto al encabezado. Edítalos las veces que quieras, es texto plano.
+- **BANNER_URL**: link de Drive de una imagen horizontal para mostrar arriba de la página. Mientras esté vacío, se sigue viendo el texto de `DESCRIPCION_SITIO` / `MENSAJE_MATERIAL` / `MENSAJE_ENVIO`. En cuanto le pongas una URL, esos textos se ocultan y se muestra la imagen en su lugar (es una cosa o la otra, no las dos a la vez).
+- **DESCRIPCION_SITIO / MENSAJE_MATERIAL / MENSAJE_ENVIO**: los textos que aparecen arriba de la página mientras no tengas `BANNER_URL` puesto. Edítalos las veces que quieras, es texto plano.
 
 ## Paso 4 — Fotos de los productos (Google Drive)
 
@@ -129,6 +131,12 @@ Las imágenes ya solo se leen desde Drive o desde una URL externa completa — y
 - **Nuevo color**: agrégalo en la pestaña Colores con `Disponible: si`. Aparece automáticamente en el selector de cualquier producto con "Opciones de color" activado.
 - **Ver pedidos**: todos quedan en la pestaña "Pedidos" con número de orden, fecha, productos (incluye el color elegido si aplica), y total.
 - **Actualizar el status de un pedido**: edita la columna Status en "Pedidos" — el cliente lo ve al consultar su número de orden en la web.
+
+## Búsqueda, Novedades y orden del catálogo
+
+- **Buscador**: el ícono de lupa junto al carrito despliega un campo de texto que filtra por nombre, descripción o SKU, combinado con el filtro de categoría activo.
+- **Novedades**: el carrusel de arriba siempre muestra los productos marcados `Novedades: si` **más recientes primero**, con un máximo de **10** — no hace falta quitarle la marca a los viejos, se van cayendo solos del carrusel conforme agregas productos nuevos (aunque la marca se las quedes puesta).
+- **Catálogo (orden por default): "Más pedidos"**. El selector "Filtrar" ordena por cuántas piezas se han pedido de cada producto en total (leyendo la pestaña Pedidos), de mayor a menor. Los que aún no tienen pedidos se acomodan entre sí en el orden del Sheet. Esto es intencional: así "Novedades" (arriba) y el catálogo (abajo) muestran dos cosas distintas — lo recién agregado vs. lo que más se vende — en vez de verse repetidos. Si prefieres ver el orden tal cual está en el Sheet, esa opción sigue disponible en el mismo selector como "Orden del Sheet".
 
 ## Notas técnicas
 

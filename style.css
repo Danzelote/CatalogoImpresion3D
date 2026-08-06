@@ -71,7 +71,7 @@ img { max-width: 100%; display: block; }
 }
 
 .brand-logo {
-  height: 32px;
+  height: 60px;
   width: auto;
   border-radius: 6px;
 }
@@ -82,16 +82,28 @@ img { max-width: 100%; display: block; }
   flex-shrink: 0;
 }
 
-.brand .layer-mark {
-  color: var(--filament);
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  border: 1px solid var(--filament-dim);
-  border-radius: 4px;
-  padding: 2px 6px;
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
+
+.search-toggle {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s ease;
+}
+
+.search-toggle:hover { border-color: var(--filament); }
+.search-toggle .icon { width: 18px; height: 18px; }
 
 .cart-toggle {
   background: var(--panel);
@@ -568,10 +580,18 @@ img { max-width: 100%; display: block; }
 /* ---------- Hero / intro ---------- */
 
 .hero {
-  max-width: 700px;
+  max-width: 900px;
   margin: 0 auto;
   padding: 22px 24px 6px;
   text-align: center;
+}
+
+.hero-banner {
+  width: 100%;
+  max-height: 280px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  margin-bottom: 4px;
 }
 
 .hero-desc {
@@ -600,6 +620,47 @@ img { max-width: 100%; display: block; }
   border-bottom: 1px solid var(--line);
   margin-top: 14px;
 }
+
+/* ---------- Barra de búsqueda ---------- */
+
+.search-bar {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--line);
+}
+
+.search-bar.open { display: flex; }
+
+.search-bar .icon { color: var(--ink-muted); }
+
+.search-bar input {
+  flex: 1;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 16px; /* evita el zoom automático en iOS al enfocar */
+  padding: 10px 14px;
+  border-radius: var(--radius);
+}
+
+.search-bar input:focus { outline: none; border-color: var(--filament); }
+
+.search-close {
+  background: none;
+  border: none;
+  color: var(--ink-muted);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.search-close:hover { color: var(--ink); }
 
 /* ---------- Botón flotante de WhatsApp ---------- */
 
@@ -1124,6 +1185,8 @@ img { max-width: 100%; display: block; }
 
 @media (max-width: 640px) {
   .site-header { padding: 14px 16px; }
+  .brand-logo { height: 46px; }
+  .search-bar { padding: 10px 16px; }
   .hero { padding: 18px 16px 4px; }
   .whatsapp-float { width: 50px; height: 50px; bottom: 16px; right: 16px; }
   .cart-drawer { width: calc(100% - 56px); }

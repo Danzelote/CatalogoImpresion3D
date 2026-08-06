@@ -8,18 +8,18 @@
 --------------------------------------------- */
 const CONFIG = {
   // ID del Google Sheet (está en la URL: .../d/ESTE_ID/edit)
-  SHEET_ID: '1wyY5BBbm5ZJBYXs93H21l_2tRvCrYmWrbX_RLUrZjzs',
+  SHEET_ID: 'TU_SHEET_ID_AQUI',
 
   // Nombres exactos de las pestañas
   SHEET_PRODUCTOS: 'Productos',
   SHEET_COLORES: 'Colores',
 
   // URL del Apps Script publicado como Web App (ver README)
-  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbyx2v7w4F13VmmqHiU8GIDr1yto5ZwmPSiIOWoTPbVYBnz4Buxxvgses-23y-EzuZI/exec',
+  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/TU_DEPLOYMENT_ID/exec',
 
   // Número de WhatsApp donde llegan los pedidos y las dudas de contacto,
   // con código de país, solo dígitos (ej. México: 52 + 10 dígitos)
-  WHATSAPP_NUMBER: '525531605449',
+  WHATSAPP_NUMBER: '5215512345678',
 
   // Mensaje predeterminado del botón flotante de contacto (dudas generales,
   // no pedidos — esos usan su propio mensaje con número de orden)
@@ -30,7 +30,12 @@ const CONFIG = {
 
   // URL de la imagen de tu logotipo (Drive o cualquier URL completa).
   // Si la dejas vacía, solo se muestra el texto "Catálogo 3D".
-  LOGO_URL: 'https://drive.google.com/file/d/1zHxQXHC1-_sLhD6HbiLaClyD6acicmmI/view?usp=share_link',
+  LOGO_URL: '',
+
+  // URL de una imagen de banner horizontal para el encabezado (Drive o
+  // cualquier URL completa). Si la llenas, se muestra esa imagen en vez
+  // del texto de abajo. Si la dejas vacía, se sigue viendo el texto.
+  BANNER_URL: '',
 
   // Textos del encabezado — edítalos las veces que quieras sin tocar HTML.
   DESCRIPCION_SITIO: 'Piezas impresas en 3D, listas para recoger — no vendemos archivos STL.',
@@ -43,9 +48,11 @@ const CONFIG = {
 --------------------------------------------- */
 let PRODUCTOS = [];
 let COLORES_DISPONIBLES = [];
+let POPULARIDAD = {}; // { SKU: piezas pedidas en total }
 let CATEGORIA_ACTIVA = 'todas';
 let SUBCATEGORIA_ACTIVA = 'todas';
-let ORDEN_ACTIVO = 'relevancia';
+let ORDEN_ACTIVO = 'populares';
+let TEXTO_BUSQUEDA = '';
 let CARRITO = cargarCarrito();
 
 /* ---------------------------------------------
@@ -74,6 +81,22 @@ async function cargarColores() {
   } catch (err) {
     console.error(err);
     COLORES_DISPONIBLES = [];
+  }
+}
+
+// Trae, desde la pestaña "Pedidos", cuántas piezas se han pedido de cada
+// SKU en total — se usa para ordenar el catálogo por "más pedidos".
+// Si falla (por ejemplo, Apps Script desactualizado), se sigue de largo
+// con POPULARIDAD vacío y el catálogo cae de regreso al orden del Sheet.
+async function cargarPopularidad() {
+  try {
+    const data = await llamarAppsScript('accion=popularidad');
+    if (data.ok && data.conteos) {
+      POPULARIDAD = data.conteos;
+    }
+  } catch (err) {
+    console.error(err);
+    POPULARIDAD = {};
   }
 }
 
@@ -245,7 +268,10 @@ function renderCategorias() {
 function renderNovedades() {
   const seccion = document.getElementById('novedadesSection');
   const track = document.getElementById('novedadesTrack');
-  const novedades = PRODUCTOS.filter(p => p.novedad);
+  const novedades = PRODUCTOS
+    .filter(p => p.novedad)
+    .sort((a, b) => b._orden - a._orden) // más nuevo primero
+    .slice(0, 10);
 
   if (!novedades.length) {
     seccion.style.display = 'none';
@@ -276,6 +302,11 @@ function renderNovedades() {
 function ordenarLista(lista) {
   const ordenado = [...lista];
   switch (ORDEN_ACTIVO) {
+    case 'populares':
+      // Los empatados (incluyendo 0-0 cuando aún no hay pedidos) se quedan
+      // en su orden original del Sheet — el sort de JS es estable.
+      ordenado.sort((a, b) => (POPULARIDAD[b.sku] || 0) - (POPULARIDAD[a.sku] || 0));
+      break;
     case 'nuevo':
       ordenado.sort((a, b) => b._orden - a._orden);
       break;
@@ -298,17 +329,24 @@ function ordenarLista(lista) {
 function renderCatalogo() {
   const catalogEl = document.getElementById('catalog');
   const filtrada = PRODUCTOS.filter(p => {
-    if (CATEGORIA_ACTIVA === 'todas') return true;
-    return p.categorias.some(c => {
-      if (c.padre !== CATEGORIA_ACTIVA) return false;
-      if (SUBCATEGORIA_ACTIVA === 'todas') return true;
-      return c.hijo === SUBCATEGORIA_ACTIVA;
-    });
+    if (CATEGORIA_ACTIVA !== 'todas') {
+      const coincideCategoria = p.categorias.some(c => {
+        if (c.padre !== CATEGORIA_ACTIVA) return false;
+        if (SUBCATEGORIA_ACTIVA === 'todas') return true;
+        return c.hijo === SUBCATEGORIA_ACTIVA;
+      });
+      if (!coincideCategoria) return false;
+    }
+    if (TEXTO_BUSQUEDA) {
+      const texto = `${p.nombre} ${p.descripcion} ${p.sku}`.toLowerCase();
+      if (!texto.includes(TEXTO_BUSQUEDA)) return false;
+    }
+    return true;
   });
   const lista = ordenarLista(filtrada);
 
   if (!lista.length) {
-    catalogEl.innerHTML = `<div class="state-msg">No hay productos en esta categoría todavía.</div>`;
+    catalogEl.innerHTML = `<div class="state-msg">${TEXTO_BUSQUEDA ? 'No encontramos productos con esa búsqueda.' : 'No hay productos en esta categoría todavía.'}</div>`;
     return;
   }
 
@@ -816,9 +854,16 @@ function iniciarEncabezado() {
     }
   }
 
-  document.getElementById('heroDesc').textContent = CONFIG.DESCRIPCION_SITIO;
-  document.getElementById('heroExtra').textContent =
-    `${CONFIG.MENSAJE_MATERIAL} ${CONFIG.MENSAJE_ENVIO}`;
+  const bannerSrc = CONFIG.BANNER_URL ? resolverFoto(CONFIG.BANNER_URL) : '';
+  if (bannerSrc) {
+    const banner = document.getElementById('heroBanner');
+    banner.src = bannerSrc;
+    banner.style.display = 'block';
+  } else {
+    document.getElementById('heroDesc').textContent = CONFIG.DESCRIPCION_SITIO;
+    document.getElementById('heroExtra').textContent =
+      `${CONFIG.MENSAJE_MATERIAL} ${CONFIG.MENSAJE_ENVIO}`;
+  }
 
   const whatsappFloat = document.getElementById('whatsappFloat');
   whatsappFloat.href = `https://wa.me/${CONFIG.WHATSAPP_NUMBER}?text=${encodeURIComponent(CONFIG.WHATSAPP_MENSAJE_CONTACTO)}`;
@@ -854,12 +899,29 @@ document.getElementById('novNext').addEventListener('click', () => {
   document.getElementById('novedadesTrack').scrollBy({ left: 220, behavior: 'smooth' });
 });
 
+document.getElementById('searchToggle').addEventListener('click', () => {
+  const bar = document.getElementById('searchBar');
+  bar.classList.add('open');
+  document.getElementById('searchInput').focus();
+});
+document.getElementById('searchClose').addEventListener('click', () => {
+  document.getElementById('searchBar').classList.remove('open');
+  document.getElementById('searchInput').value = '';
+  TEXTO_BUSQUEDA = '';
+  renderCatalogo();
+});
+document.getElementById('searchInput').addEventListener('input', (ev) => {
+  TEXTO_BUSQUEDA = ev.target.value.trim().toLowerCase();
+  renderCatalogo();
+});
+
 async function iniciar() {
   iniciarEncabezado();
   renderCarrito();
-  // Los colores se cargan primero porque los selectores de color de
-  // cada producto los necesitan listos antes de dibujar el catálogo.
-  await cargarColores();
+  // Colores y popularidad se cargan antes que los productos: los
+  // selectores de color y el orden "más pedidos" los necesitan listos
+  // desde el primer render del catálogo.
+  await Promise.all([cargarColores(), cargarPopularidad()]);
   await cargarProductos();
 }
 

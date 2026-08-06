@@ -14,15 +14,26 @@
   <div class="brand" id="brand">
     <img id="brandLogo" class="brand-logo" alt="Logo" style="display:none;">
     <span>Catálogo 3D</span>
-    <span class="layer-mark">0.20mm</span>
   </div>
-  <button class="cart-toggle" id="cartToggle">
-    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
-    Carrito <span class="cart-count" id="cartCount">0</span>
-  </button>
+  <div class="header-actions">
+    <button class="search-toggle" id="searchToggle" aria-label="Buscar">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+    </button>
+    <button class="cart-toggle" id="cartToggle">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+      Carrito <span class="cart-count" id="cartCount">0</span>
+    </button>
+  </div>
 </header>
 
+<form class="search-bar" id="searchBar">
+  <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+  <input type="text" id="searchInput" placeholder="Buscar por nombre, descripción o SKU..." autocomplete="off">
+  <button type="button" class="search-close" id="searchClose" aria-label="Cerrar búsqueda">&times;</button>
+</form>
+
 <section class="hero">
+  <img id="heroBanner" class="hero-banner" alt="Catálogo 3D" style="display:none;">
   <p class="hero-desc" id="heroDesc"></p>
   <p class="hero-extra" id="heroExtra"></p>
 </section>
@@ -54,11 +65,12 @@
       Filtrar
     </label>
     <select id="sortSelect">
-      <option value="relevancia">Recomendados</option>
+      <option value="populares">Más pedidos</option>
       <option value="nuevo">Más nuevo primero</option>
       <option value="precio-asc">Precio: menor a mayor</option>
       <option value="precio-desc">Precio: mayor a menor</option>
       <option value="categoria">Categoría (A-Z)</option>
+      <option value="relevancia">Orden del Sheet</option>
     </select>
   </div>
 </div>
