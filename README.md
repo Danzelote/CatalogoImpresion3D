@@ -118,6 +118,16 @@ const CONFIG = {
 
 Las imágenes ya solo se leen desde Drive o desde una URL externa completa — ya no hay carpeta local de fotos en el repo.
 
+## Nombre de la tienda, ícono y vista previa al compartir
+
+- **Nombre visible en el encabezado**: se controla con `CONFIG.NOMBRE_TIENDA` en `script.js`.
+- **Título de la pestaña del navegador y vista previa al compartir el link** (WhatsApp, Facebook, etc.): estos **no** se pueden controlar desde `script.js` — los lee un "robot" que no ejecuta JavaScript, así que viven directo en `index.html` como texto fijo (`<title>` y las etiquetas `og:`). Si cambias el nombre de la tienda, actualízalo en los **dos** lugares.
+- **Ícono (favicon) y logo al compartir**: en `index.html`, cerca del inicio, hay 3 líneas con `TU_LOGO_URL_AQUI` que hay que reemplazar una sola vez:
+  1. Publica el sitio con tu `LOGO_URL` ya configurado (paso 3).
+  2. Abre el sitio ya en línea, clic derecho sobre el logo del encabezado → **"Copiar dirección de la imagen"**.
+  3. Pega esa URL reemplazando las 3 apariciones de `TU_LOGO_URL_AQUI` en `index.html`.
+  4. Vuelve a subir `index.html`.
+
 ## Paso 5 — Publicar en GitHub Pages
 
 1. Crea un repositorio nuevo en GitHub y sube estos archivos: `index.html`, `style.css`, `script.js`.

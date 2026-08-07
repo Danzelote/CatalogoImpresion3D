@@ -316,6 +316,17 @@ img { max-width: 100%; display: block; }
   color: var(--ink-muted);
   line-height: 1.45;
   flex: 1;
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.desc-more {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--filament);
+  margin-top: -4px;
 }
 
 .product-tags {
@@ -625,12 +636,15 @@ img { max-width: 100%; display: block; }
 
 .search-bar {
   display: none;
+  position: sticky;
+  top: 0; /* se ajusta en JS según la altura real del header */
+  z-index: 19;
   align-items: center;
   gap: 10px;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 12px 24px;
+  background: rgba(23, 25, 28, 0.96);
+  backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--line);
+  padding: 12px 24px;
 }
 
 .search-bar.open { display: flex; }

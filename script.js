@@ -8,18 +8,18 @@
 --------------------------------------------- */
 const CONFIG = {
   // ID del Google Sheet (está en la URL: .../d/ESTE_ID/edit)
-  SHEET_ID: '1wyY5BBbm5ZJBYXs93H21l_2tRvCrYmWrbX_RLUrZjzs',
+  SHEET_ID: 'TU_SHEET_ID_AQUI',
 
   // Nombres exactos de las pestañas
   SHEET_PRODUCTOS: 'Productos',
   SHEET_COLORES: 'Colores',
 
   // URL del Apps Script publicado como Web App (ver README)
-  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbyx2v7w4F13VmmqHiU8GIDr1yto5ZwmPSiIOWoTPbVYBnz4Buxxvgses-23y-EzuZI/exec',
+  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/TU_DEPLOYMENT_ID/exec',
 
   // Número de WhatsApp donde llegan los pedidos y las dudas de contacto,
   // con código de país, solo dígitos (ej. México: 52 + 10 dígitos)
-  WHATSAPP_NUMBER: '525531605449',
+  WHATSAPP_NUMBER: '5215512345678',
 
   // Mensaje predeterminado del botón flotante de contacto (dudas generales,
   // no pedidos — esos usan su propio mensaje con número de orden)
@@ -28,14 +28,21 @@ const CONFIG = {
   // Símbolo/formato de moneda
   MONEDA: 'MXN',
 
+  // Nombre de la tienda que se muestra junto al logo en el encabezado.
+  // OJO: esto NO cambia el título de la pestaña del navegador ni lo que
+  // sale al compartir el link — eso vive directo en index.html (<title>
+  // y las etiquetas og:) porque las lee un "robot" que no ejecuta este
+  // script. Si cambias el nombre aquí, actualízalo también allá.
+  NOMBRE_TIENDA: 'San Pedro 3D',
+
   // URL de la imagen de tu logotipo (Drive o cualquier URL completa).
   // Si la dejas vacía, solo se muestra el texto "Catálogo 3D".
-  LOGO_URL: 'https://drive.google.com/file/d/1zHxQXHC1-_sLhD6HbiLaClyD6acicmmI/view?usp=share_link',
+  LOGO_URL: '',
 
   // URL de una imagen de banner horizontal para el encabezado (Drive o
   // cualquier URL completa). Si la llenas, se muestra esa imagen en vez
   // del texto de abajo. Si la dejas vacía, se sigue viendo el texto.
-  BANNER_URL: 'https://drive.google.com/file/d/1lw-VuxMoLssqB7HgfZG7viBMaGD0bnpO/view?usp=share_link',
+  BANNER_URL: '',
 
   // Textos del encabezado — edítalos las veces que quieras sin tocar HTML.
   DESCRIPCION_SITIO: 'Piezas impresas en 3D, listas para recoger — no vendemos archivos STL.',
@@ -79,15 +86,17 @@ async function cargarColores() {
       }))
       .filter(c => c.nombre && c.disponible);
   } catch (err) {
+    // No es un error fatal: el catálogo puede vivir sin colores cargados,
+    // simplemente ningún producto con "Opciones de color" podrá elegirse.
     console.error(err);
     COLORES_DISPONIBLES = [];
   }
 }
 
 // Trae, desde la pestaña "Pedidos", cuántas piezas se han pedido de cada
-// SKU en total — se usa para ordenar el catálogo por "más pedidos".
-// Si falla (por ejemplo, Apps Script desactualizado), se sigue de largo
-// con POPULARIDAD vacío y el catálogo cae de regreso al orden del Sheet.
+// SKU en total — se usa para ordenar el catálogo por "más pedidos". Se
+// pide aparte y no bloquea la primera pintada del catálogo (ver iniciar());
+// en cuanto responde, solo reordena lo que ya se está viendo.
 async function cargarPopularidad() {
   try {
     const data = await llamarAppsScript('accion=popularidad');
@@ -100,28 +109,27 @@ async function cargarPopularidad() {
   }
 }
 
+// A diferencia de cargarColores, esta SÍ deja que el error se propague
+// (no atrapa el catch) — si el Sheet de productos falla, es un error real
+// que debe mostrar el aviso al visitante, no algo de lo que se pueda
+// seguir de largo en silencio.
 async function cargarProductos() {
-  const catalogEl = document.getElementById('catalog');
-  try {
-    const res = await fetch(urlCSV(CONFIG.SHEET_PRODUCTOS));
-    if (!res.ok) throw new Error('No se pudo leer el Sheet');
-    const csvText = await res.text();
-    const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
+  const res = await fetch(urlCSV(CONFIG.SHEET_PRODUCTOS));
+  if (!res.ok) throw new Error('No se pudo leer el Sheet de productos');
+  const csvText = await res.text();
+  const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
 
-    PRODUCTOS = parsed.data
-      .map(normalizarProducto)
-      // Se oculta si falta el nombre, si Activo no dice explícitamente "si",
-      // o si el precio está vacío/ inválido (evita mostrar productos en $0).
-      .filter(p => p.nombre && p.activo && !isNaN(p.precio))
-      .map((p, i) => ({ ...p, _orden: i }));
+  PRODUCTOS = parsed.data
+    .map(normalizarProducto)
+    // Se oculta si falta el nombre, si Activo no dice explícitamente "si",
+    // o si el precio está vacío/ inválido (evita mostrar productos en $0).
+    .filter(p => p.nombre && p.activo && !isNaN(p.precio))
+    .map((p, i) => ({ ...p, _orden: i }));
+}
 
-    renderCategorias();
-    renderNovedades();
-    renderCatalogo();
-  } catch (err) {
-    console.error(err);
-    catalogEl.innerHTML = `<div class="state-msg">No se pudo cargar el catálogo.<br>Revisa que el Google Sheet sea público ("Cualquiera con el enlace: Lector") y que el SHEET_ID en script.js sea correcto.</div>`;
-  }
+function mostrarErrorCatalogo() {
+  document.getElementById('catalog').innerHTML =
+    `<div class="state-msg">El catálogo se está actualizando.<br>Por favor recarga la página en unos minutos.</div>`;
 }
 
 function normalizarProducto(row) {
@@ -439,7 +447,7 @@ function tarjetaProducto(p) {
         <div class="product-name">${escapeHtml(p.nombre)}</div>
         <div class="product-sku">SKU ${escapeHtml(p.sku)}</div>
         ${p.cantidadPorPieza ? `<div class="product-quantity">Piezas por pedido: ${escapeHtml(p.cantidadPorPieza)}</div>` : ''}
-        ${p.descripcion ? `<div class="product-desc">${escapeHtml(p.descripcion)}</div>` : ''}
+        ${p.descripcion ? `<div class="product-desc">${escapeHtml(p.descripcion)}</div>${p.descripcion.length > 140 ? '<span class="desc-more">Leer más</span>' : ''}` : ''}
         ${p.categorias.length ? `<div class="product-tags">${p.categorias.map(c => `<span class="product-tag">${escapeHtml(etiquetaCategoria(c))}</span>`).join('')}</div>` : ''}
         ${p.opcionesColor ? opcionesColorHTML(p.sku) : ''}
         <div class="product-footer">
@@ -844,25 +852,41 @@ function escapeAttr(str) {
 /* ---------------------------------------------
    9) ENCABEZADO: logo, descripción y botón de WhatsApp flotante
 --------------------------------------------- */
+// La barra de búsqueda es "sticky" pero su posición (top) depende de la
+// altura real del header (varía según el tamaño del logo) — se calcula
+// en JS en vez de dejarla fija en CSS, así nunca se monta encima.
+function ajustarPosicionBusqueda() {
+  const header = document.querySelector('.site-header');
+  const searchBar = document.getElementById('searchBar');
+  searchBar.style.top = `${header.offsetHeight}px`;
+}
+window.addEventListener('resize', ajustarPosicionBusqueda);
+
 function iniciarEncabezado() {
+  document.getElementById('brandName').textContent = CONFIG.NOMBRE_TIENDA;
+
   if (CONFIG.LOGO_URL) {
     const logo = document.getElementById('brandLogo');
     const src = resolverFoto(CONFIG.LOGO_URL);
     if (src) {
+      logo.onload = ajustarPosicionBusqueda;
       logo.src = src;
       logo.style.display = 'block';
     }
   }
 
   const bannerSrc = CONFIG.BANNER_URL ? resolverFoto(CONFIG.BANNER_URL) : '';
+  const howtoBanner = document.getElementById('howtoBanner');
   if (bannerSrc) {
     const banner = document.getElementById('heroBanner');
     banner.src = bannerSrc;
     banner.style.display = 'block';
+    howtoBanner.style.display = 'none';
   } else {
     document.getElementById('heroDesc').textContent = CONFIG.DESCRIPCION_SITIO;
     document.getElementById('heroExtra').textContent =
       `${CONFIG.MENSAJE_MATERIAL} ${CONFIG.MENSAJE_ENVIO}`;
+    howtoBanner.style.display = '';
   }
 
   const whatsappFloat = document.getElementById('whatsappFloat');
@@ -914,15 +938,37 @@ document.getElementById('searchInput').addEventListener('input', (ev) => {
   TEXTO_BUSQUEDA = ev.target.value.trim().toLowerCase();
   renderCatalogo();
 });
+// El filtrado ya pasa al vuelo mientras se escribe, así que al dar Enter
+// no hay que recargar nada — solo se cierra el teclado del celular.
+document.getElementById('searchBar').addEventListener('submit', (ev) => {
+  ev.preventDefault();
+  document.getElementById('searchInput').blur();
+});
 
 async function iniciar() {
   iniciarEncabezado();
   renderCarrito();
-  // Colores y popularidad se cargan antes que los productos: los
-  // selectores de color y el orden "más pedidos" los necesitan listos
-  // desde el primer render del catálogo.
-  await Promise.all([cargarColores(), cargarPopularidad()]);
-  await cargarProductos();
+  ajustarPosicionBusqueda();
+
+  try {
+    // Colores y productos se piden al mismo tiempo de verdad, y se espera
+    // a ambos antes de pintar — así el catálogo aparece en cuanto la más
+    // lenta de las dos responda, no la suma de las dos.
+    await Promise.all([cargarColores(), cargarProductos()]);
+    renderCategorias();
+    renderNovedades();
+    renderCatalogo();
+  } catch (err) {
+    console.error(err);
+    mostrarErrorCatalogo();
+    return;
+  }
+
+  // La popularidad ("más pedidos") se pide aparte y no bloquea la primera
+  // pintada — cuando llega, solo reordena en silencio si ese es el orden activo.
+  cargarPopularidad().then(() => {
+    if (ORDEN_ACTIVO === 'populares') renderCatalogo();
+  });
 }
 
 iniciar();
