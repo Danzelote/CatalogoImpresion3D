@@ -8,7 +8,7 @@
 --------------------------------------------- */
 const CONFIG = {
   // ID del Google Sheet (está en la URL: .../d/ESTE_ID/edit)
-  SHEET_ID: '1wyY5BBbm5ZJBYXs93H21l_2tRvCrYmWrbX_RLUrZjzs'',
+  SHEET_ID: '1wyY5BBbm5ZJBYXs93H21l_2tRvCrYmWrbX_RLUrZjzs',
 
   // Nombres exactos de las pestañas
   SHEET_PRODUCTOS: 'Productos',
