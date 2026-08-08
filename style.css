@@ -1162,13 +1162,11 @@ img { max-width: 100%; display: block; }
   letter-spacing: 0.03em;
 }
 
-.status-badge.pendiente { background: rgba(255, 106, 61, 0.15); color: var(--filament); border: 1px solid var(--filament-dim); }
-.status-badge.en-proceso,
-.status-badge.en-produccion,
+.status-badge.pendiente-de-anticipo,
+.status-badge.por-imprimir { background: rgba(255, 106, 61, 0.15); color: var(--filament); border: 1px solid var(--filament-dim); }
 .status-badge.imprimiendo { background: rgba(45, 212, 191, 0.15); color: var(--teal); border: 1px solid rgba(45, 212, 191, 0.4); }
-.status-badge.listo,
-.status-badge.entregado,
-.status-badge.completado { background: rgba(45, 212, 191, 0.15); color: var(--teal); border: 1px solid rgba(45, 212, 191, 0.4); }
+.status-badge.listo-para-entregar,
+.status-badge.entregado { background: rgba(45, 212, 191, 0.15); color: var(--teal); border: 1px solid rgba(45, 212, 191, 0.4); }
 .status-badge.cancelado { background: rgba(224, 82, 74, 0.15); color: var(--danger); border: 1px solid rgba(224, 82, 74, 0.4); }
 .status-badge.default { background: var(--panel-raised); color: var(--ink-muted); border: 1px solid var(--line); }
 
