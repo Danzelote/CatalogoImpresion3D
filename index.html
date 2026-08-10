@@ -15,7 +15,8 @@
   Cómo sacar la URL correcta, una sola vez:
   1. Con el sitio ya publicado y el logo visible arriba a la izquierda,
      clic derecho sobre el logo → "Copiar dirección de la imagen".
-  2. Pega esa URL reemplazando TU_LOGO_URL_AQUI en las 5 líneas de abajo.
+  2. Pega esa URL reemplazando TU_LOGO_URL_AQUI en las 5 líneas de abajo
+     y en manifest.json.
 -->
 <link rel="icon" type="image/png" href="TU_LOGO_URL_AQUI">
 <link rel="apple-touch-icon" href="TU_LOGO_URL_AQUI">
@@ -27,8 +28,15 @@
 <meta name="theme-color" content="#17191c">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="San Pedro 3D">
+<link rel="manifest" href="manifest.json">
 
+<!-- Adelanta la conexión a los servidores de donde va a pedir datos e
+     imágenes — ayuda sobre todo en datos móviles, cada conexión nueva
+     pesa más ahí que en wifi. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://docs.google.com">
+<link rel="preconnect" href="https://lh3.googleusercontent.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
@@ -40,7 +48,10 @@
     <span id="brandName">San Pedro 3D</span>
   </div>
   <div class="header-actions">
-    <button class="search-toggle" id="searchToggle" aria-label="Buscar">
+    <button class="icon-btn" id="orderStatusToggle" aria-label="Status de pedido">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+    </button>
+    <button class="icon-btn" id="searchToggle" aria-label="Buscar">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
     </button>
     <button class="cart-toggle" id="cartToggle">
@@ -57,11 +68,10 @@
 </form>
 
 <section class="hero">
-  <img id="heroBanner" class="hero-banner" alt="San Pedro 3D" style="display:none;">
+  <img id="heroBanner" class="hero-banner" alt="San Pedro 3D" style="display:none;" decoding="async">
   <p class="hero-desc" id="heroDesc"></p>
   <p class="hero-extra" id="heroExtra"></p>
 </section>
-
 
 <div class="howto-banner" id="howtoBanner">
   Cómo funciona: da clic en un producto para ver más fotos y detalles · agrégalo a tu carrito · ordena por WhatsApp
@@ -107,24 +117,30 @@
   </div>
 </main>
 
-<section class="status-section">
-  <h2 class="section-title">Consultar mi pedido</h2>
-  <p class="section-hint">Escribe tu número de orden para ver el status.</p>
-  <form class="status-form" id="statusForm">
-    <input type="text" id="statusInput" placeholder="Ej. 000123" inputmode="numeric" autocomplete="off">
-    <button type="submit" id="statusBtn">Consultar</button>
-  </form>
-  <div class="status-result" id="statusResult"></div>
-</section>
+<div class="pagination" id="pagination"></div>
 
 <footer class="site-footer">
-  Hecho a capas · pedidos por WhatsApp
+  Creado por <a href="https://github.com/Danzelote" target="_blank" rel="noopener">@Danzelote</a>
 </footer>
 
 <!-- Botón flotante de contacto por WhatsApp -->
 <a href="#" id="whatsappFloat" class="whatsapp-float" target="_blank" rel="noopener" aria-label="Contactar por WhatsApp">
   <svg viewBox="0 0 24 24" fill="currentColor" width="26" height="26"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.148-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"></path><path d="M12 2C6.477 2 2 6.477 2 12c0 1.98.578 3.826 1.578 5.383L2 22l4.735-1.545A9.953 9.953 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18a7.95 7.95 0 0 1-4.32-1.267l-.31-.19-3.19 1.04 1.045-3.11-.203-.32A7.95 7.95 0 0 1 4 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8z"></path></svg>
 </a>
+
+<!-- Consultar status de pedido (popup) -->
+<div class="modal-overlay" id="statusOverlay">
+  <div class="confirm-box">
+    <button class="modal-close modal-close-static" id="statusClose">&times;</button>
+    <h2>¿Ya hiciste un pedido?</h2>
+    <p class="section-hint">Escribe tu número de orden y consulta en qué fase se encuentra.</p>
+    <form class="status-form" id="statusForm">
+      <input type="text" id="statusInput" placeholder="Ej. 000123" inputmode="numeric" autocomplete="off">
+      <button type="submit" id="statusBtn">Consultar</button>
+    </form>
+    <div class="status-result" id="statusResult"></div>
+  </div>
+</div>
 
 <!-- Confirmación antes de abrir WhatsApp -->
 <div class="modal-overlay" id="confirmOverlay">
@@ -136,6 +152,8 @@
     <button class="order-btn" id="confirmWhatsappBtn">Abrir WhatsApp y enviar</button>
   </div>
 </div>
+
+<!-- Modal de detalle de producto -->
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal-box">
     <div class="modal-sticky-bar">
@@ -160,12 +178,20 @@
       <span>Total</span>
       <span id="cartTotal">$0</span>
     </div>
+    <div class="newsletter-optin">
+      <input type="email" id="newsletterEmail" placeholder="Tu correo (opcional)" autocomplete="email">
+      <input type="text" id="newsletterNombre" placeholder="Tu nombre (opcional)" autocomplete="name">
+      <label class="checkbox-row">
+        <input type="checkbox" id="newsletterCheckbox">
+        Recibir novedades y promociones por correo
+      </label>
+    </div>
     <button class="order-btn" id="orderBtn">Ordenar por WhatsApp</button>
     <div class="order-hint">Se abrirá WhatsApp con tu pedido ya redactado.</div>
   </div>
 </aside>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-<script src="script.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js" defer></script>
+<script src="script.js" defer></script>
 </body>
 </html>

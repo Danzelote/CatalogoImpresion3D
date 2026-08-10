@@ -8,18 +8,18 @@
 --------------------------------------------- */
 const CONFIG = {
   // ID del Google Sheet (está en la URL: .../d/ESTE_ID/edit)
-  SHEET_ID: '1wyY5BBbm5ZJBYXs93H21l_2tRvCrYmWrbX_RLUrZjzs',
+  SHEET_ID: 'TU_SHEET_ID_AQUI',
 
   // Nombres exactos de las pestañas
   SHEET_PRODUCTOS: 'Productos',
   SHEET_COLORES: 'Colores',
 
   // URL del Apps Script publicado como Web App (ver README)
-  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbyx2v7w4F13VmmqHiU8GIDr1yto5ZwmPSiIOWoTPbVYBnz4Buxxvgses-23y-EzuZI/exec',
+  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/TU_DEPLOYMENT_ID/exec',
 
   // Número de WhatsApp donde llegan los pedidos y las dudas de contacto,
   // con código de país, solo dígitos (ej. México: 52 + 10 dígitos)
-  WHATSAPP_NUMBER: '5215531605449',
+  WHATSAPP_NUMBER: '5215512345678',
 
   // Mensaje predeterminado del botón flotante de contacto (dudas generales,
   // no pedidos — esos usan su propio mensaje con número de orden)
@@ -27,6 +27,10 @@ const CONFIG = {
 
   // Símbolo/formato de moneda
   MONEDA: 'MXN',
+
+  // Cuántos productos se muestran por página en el catálogo antes de
+  // pasar a "Siguiente".
+  PRODUCTOS_POR_PAGINA: 12,
 
   // Nombre de la tienda que se muestra junto al logo en el encabezado.
   // OJO: esto NO cambia el título de la pestaña del navegador ni lo que
@@ -37,12 +41,12 @@ const CONFIG = {
 
   // URL de la imagen de tu logotipo (Drive o cualquier URL completa).
   // Si la dejas vacía, solo se muestra el texto "Catálogo 3D".
-  LOGO_URL: 'https://drive.google.com/file/d/1zHxQXHC1-_sLhD6HbiLaClyD6acicmmI/view?usp=share_link',
+  LOGO_URL: '',
 
   // URL de una imagen de banner horizontal para el encabezado (Drive o
   // cualquier URL completa). Si la llenas, se muestra esa imagen en vez
   // del texto de abajo. Si la dejas vacía, se sigue viendo el texto.
-  BANNER_URL: 'https://drive.google.com/file/d/11241AuYQRLRGBpKwOJCTXOzbOsUdwmxM/view?usp=share_link',
+  BANNER_URL: '',
 
   // Textos del encabezado — edítalos las veces que quieras sin tocar HTML.
   DESCRIPCION_SITIO: 'Piezas impresas en 3D, listas para recoger — no vendemos archivos STL.',
@@ -60,6 +64,7 @@ let CATEGORIA_ACTIVA = 'todas';
 let SUBCATEGORIA_ACTIVA = 'todas';
 let ORDEN_ACTIVO = 'populares';
 let TEXTO_BUSQUEDA = '';
+let PAGINA_ACTUAL = 1;
 let CARRITO = cargarCarrito();
 
 /* ---------------------------------------------
@@ -69,11 +74,45 @@ function urlCSV(sheetName) {
   return `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
 }
 
+// Guarda una copia breve (5 minutos) de los datos del Sheet en el propio
+// celular. Si alguien cierra la pestaña y regresa, o cambia de app y
+// vuelve, no hay que descargar y procesar todo desde cero otra vez.
+const CACHE_MINUTOS = 5;
+
+function leerCache(clave) {
+  try {
+    const crudo = localStorage.getItem('catalogo3d_cache_' + clave);
+    if (!crudo) return null;
+    const { datos, guardadoEn } = JSON.parse(crudo);
+    if (Date.now() - guardadoEn > CACHE_MINUTOS * 60 * 1000) return null;
+    return datos;
+  } catch {
+    return null;
+  }
+}
+
+function guardarCache(clave, datos) {
+  try {
+    localStorage.setItem('catalogo3d_cache_' + clave, JSON.stringify({ datos, guardadoEn: Date.now() }));
+  } catch {
+    // localStorage lleno o bloqueado: no es grave, simplemente no cachea.
+  }
+}
+
+async function obtenerCSV(sheetName, claveCache) {
+  const cacheado = leerCache(claveCache);
+  if (cacheado) return cacheado;
+
+  const res = await fetch(urlCSV(sheetName));
+  if (!res.ok) throw new Error('No se pudo leer la pestaña ' + sheetName);
+  const csvText = await res.text();
+  guardarCache(claveCache, csvText);
+  return csvText;
+}
+
 async function cargarColores() {
   try {
-    const res = await fetch(urlCSV(CONFIG.SHEET_COLORES));
-    if (!res.ok) throw new Error('No se pudo leer la pestaña de Colores');
-    const csvText = await res.text();
+    const csvText = await obtenerCSV(CONFIG.SHEET_COLORES, 'colores');
     const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
 
     // Solo se cargan los colores marcados explícitamente como disponibles.
@@ -114,9 +153,7 @@ async function cargarPopularidad() {
 // que debe mostrar el aviso al visitante, no algo de lo que se pueda
 // seguir de largo en silencio.
 async function cargarProductos() {
-  const res = await fetch(urlCSV(CONFIG.SHEET_PRODUCTOS));
-  if (!res.ok) throw new Error('No se pudo leer el Sheet de productos');
-  const csvText = await res.text();
+  const csvText = await obtenerCSV(CONFIG.SHEET_PRODUCTOS, 'productos');
   const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
 
   PRODUCTOS = parsed.data
@@ -238,6 +275,7 @@ function renderCategorias() {
     btn.addEventListener('click', () => {
       CATEGORIA_ACTIVA = btn.dataset.cat;
       SUBCATEGORIA_ACTIVA = 'todas';
+      reiniciarPagina();
       renderCategorias();
       renderCatalogo();
     });
@@ -264,6 +302,7 @@ function renderCategorias() {
   subBar.querySelectorAll('.subcategory-chip').forEach(btn => {
     btn.addEventListener('click', () => {
       SUBCATEGORIA_ACTIVA = btn.dataset.sub;
+      reiniciarPagina();
       renderCategorias();
       renderCatalogo();
     });
@@ -290,7 +329,7 @@ function renderNovedades() {
   track.innerHTML = novedades.map(p => `
     <article class="novedad-card" data-sku="${escapeAttr(p.sku)}">
       <div class="novedad-photo">
-        <img src="${escapeAttr(p.fotos[0])}" alt="${escapeAttr(p.nombre)}" loading="lazy">
+        <img src="${escapeAttr(p.fotos[0])}" alt="${escapeAttr(p.nombre)}" loading="lazy" decoding="async">
       </div>
       <div class="novedad-info">
         <span class="novedad-name">${escapeHtml(p.nombre)}</span>
@@ -351,12 +390,19 @@ function renderCatalogo() {
     }
     return true;
   });
-  const lista = ordenarLista(filtrada);
+  const ordenada = ordenarLista(filtrada);
 
-  if (!lista.length) {
+  if (!ordenada.length) {
     catalogEl.innerHTML = `<div class="state-msg">${TEXTO_BUSQUEDA ? 'No encontramos productos con esa búsqueda.' : 'No hay productos en esta categoría todavía.'}</div>`;
+    renderPaginacion(0);
     return;
   }
+
+  const porPagina = CONFIG.PRODUCTOS_POR_PAGINA;
+  const totalPaginas = Math.max(1, Math.ceil(ordenada.length / porPagina));
+  if (PAGINA_ACTUAL > totalPaginas) PAGINA_ACTUAL = totalPaginas;
+  const inicio = (PAGINA_ACTUAL - 1) * porPagina;
+  const lista = ordenada.slice(inicio, inicio + porPagina);
 
   catalogEl.innerHTML = lista.map(p => tarjetaProducto(p)).join('');
 
@@ -391,6 +437,41 @@ function renderCatalogo() {
   catalogEl.querySelectorAll('.product-card').forEach(card => {
     card.addEventListener('click', () => abrirModal(card.dataset.sku));
   });
+
+  renderPaginacion(totalPaginas);
+}
+
+function renderPaginacion(totalPaginas) {
+  const cont = document.getElementById('pagination');
+
+  if (totalPaginas <= 1) {
+    cont.classList.remove('visible');
+    cont.innerHTML = '';
+    return;
+  }
+
+  cont.classList.add('visible');
+  cont.innerHTML = `
+    <button id="pagAnterior" ${PAGINA_ACTUAL <= 1 ? 'disabled' : ''}>‹ Anterior</button>
+    <span class="pagination-label">Página ${PAGINA_ACTUAL} de ${totalPaginas}</span>
+    <button id="pagSiguiente" ${PAGINA_ACTUAL >= totalPaginas ? 'disabled' : ''}>Siguiente ›</button>
+  `;
+
+  document.getElementById('pagAnterior').addEventListener('click', () => cambiarPagina(PAGINA_ACTUAL - 1));
+  document.getElementById('pagSiguiente').addEventListener('click', () => cambiarPagina(PAGINA_ACTUAL + 1));
+}
+
+function cambiarPagina(nueva) {
+  PAGINA_ACTUAL = nueva;
+  renderCatalogo();
+  document.getElementById('catalog').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Cualquier cambio de filtro/orden/búsqueda regresa a la página 1, para
+// nunca dejar a alguien viendo una "página 3" que ya no tiene tantos
+// productos con el nuevo filtro.
+function reiniciarPagina() {
+  PAGINA_ACTUAL = 1;
 }
 
 const ICONO_CARRITO = `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>`;
@@ -407,7 +488,7 @@ function opcionesColorHTML(sku) {
           <option value="">Elige un color</option>
           ${COLORES_DISPONIBLES.map(c => `<option value="${escapeAttr(c.nombre)}">${escapeHtml(c.nombre)}</option>`).join('')}
         </select>
-        <img class="color-preview" alt="Vista previa del color">
+        <img class="color-preview" alt="Vista previa del color" decoding="async">
       </div>
       <span class="color-hint">¿No ves tu color? Pregúntanos por WhatsApp.</span>
     </div>
@@ -440,7 +521,7 @@ function tarjetaProducto(p) {
   return `
     <article class="product-card" data-sku="${escapeAttr(p.sku)}">
       <div class="product-photos">
-        ${p.fotos.map((f, i) => `<img src="${escapeAttr(f)}" alt="${escapeAttr(p.nombre)}" class="${i === 0 ? 'active' : ''}" loading="lazy">`).join('')}
+        ${p.fotos.map((f, i) => `<img src="${escapeAttr(f)}" alt="${escapeAttr(p.nombre)}" class="${i === 0 ? 'active' : ''}" loading="lazy" decoding="async">`).join('')}
         ${p.fotos.length > 1 ? `<div class="photo-dots">${p.fotos.map((_, i) => `<span class="${i === 0 ? 'active' : ''}"></span>`).join('')}</div>` : ''}
       </div>
       <div class="product-body">
@@ -483,6 +564,29 @@ function manejarClicAgregar(boton, contenedor) {
   }
 }
 
+function urlProducto(sku) {
+  return `${location.origin}${location.pathname}#producto=${encodeURIComponent(sku)}`;
+}
+
+async function compartirProducto(p) {
+  const url = urlProducto(p.sku);
+  const texto = `${p.nombre} — ${formatoPrecio(p.precio)}`;
+
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: p.nombre, text: texto, url });
+    } catch {
+      // El usuario cerró el cuadro de compartir sin elegir nada — no hacer nada.
+    }
+    return;
+  }
+
+  // Respaldo para computadora, donde no existe el compartir nativo:
+  // abre WhatsApp Web con el link ya listo para mandar.
+  const mensaje = `${texto}\n${url}`;
+  window.open(`https://wa.me/?text=${encodeURIComponent(mensaje)}`, '_blank');
+}
+
 /* ---------------------------------------------
    5b) MODAL DE DETALLE (vista más grande)
 --------------------------------------------- */
@@ -495,7 +599,7 @@ function abrirModal(sku) {
   const contenido = document.getElementById('modalContent');
   contenido.innerHTML = `
     <div class="modal-photos">
-      ${p.fotos.map((f, i) => `<img src="${escapeAttr(f)}" alt="${escapeAttr(p.nombre)}" class="${i === 0 ? 'active' : ''}">`).join('')}
+      ${p.fotos.map((f, i) => `<img src="${escapeAttr(f)}" alt="${escapeAttr(p.nombre)}" class="${i === 0 ? 'active' : ''}" decoding="async">`).join('')}
       ${p.fotos.length > 1 ? `<div class="photo-dots">${p.fotos.map((_, i) => `<span class="${i === 0 ? 'active' : ''}"></span>`).join('')}</div>` : ''}
     </div>
     <div class="modal-info">
@@ -511,26 +615,57 @@ function abrirModal(sku) {
           ${enCarrito ? 'Agregado ✓' : `Agregar ${ICONO_CARRITO}`}
         </button>
       </div>
+      <div class="modal-actions">
+        <button class="share-btn" id="modalShareBtn">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+          Compartir
+        </button>
+      </div>
     </div>
   `;
+
+  history.replaceState(null, '', urlProducto(p.sku));
 
   const fotosEl = contenido.querySelector('.modal-photos');
   const imgs = fotosEl.querySelectorAll('img');
   const dots = fotosEl.querySelectorAll('.photo-dots span');
   let idx = 0;
+
+  function mostrarFoto(nuevoIdx) {
+    imgs[idx].classList.remove('active');
+    dots[idx] && dots[idx].classList.remove('active');
+    idx = (nuevoIdx + imgs.length) % imgs.length;
+    imgs[idx].classList.add('active');
+    dots[idx] && dots[idx].classList.add('active');
+  }
+
   if (imgs.length > 1) {
-    fotosEl.addEventListener('click', () => {
-      imgs[idx].classList.remove('active');
-      dots[idx] && dots[idx].classList.remove('active');
-      idx = (idx + 1) % imgs.length;
-      imgs[idx].classList.add('active');
-      dots[idx] && dots[idx].classList.add('active');
+    // Clic (o tap sin deslizar): avanza a la siguiente foto.
+    fotosEl.addEventListener('click', () => mostrarFoto(idx + 1));
+
+    // Deslizar con el dedo: izquierda = siguiente, derecha = anterior.
+    let touchStartX = null;
+    fotosEl.addEventListener('touchstart', (ev) => {
+      touchStartX = ev.touches[0].clientX;
+    }, { passive: true });
+
+    fotosEl.addEventListener('touchend', (ev) => {
+      if (touchStartX === null) return;
+      const deltaX = ev.changedTouches[0].clientX - touchStartX;
+      touchStartX = null;
+
+      if (Math.abs(deltaX) < 40) return; // fue un tap, no un swipe — lo maneja el 'click'
+
+      ev.preventDefault(); // evita que también dispare el 'click' de avance
+      mostrarFoto(deltaX < 0 ? idx + 1 : idx - 1);
     });
   }
 
   document.getElementById('modalAddBtn').addEventListener('click', (ev) => {
     manejarClicAgregar(ev.currentTarget, contenido);
   });
+
+  document.getElementById('modalShareBtn').addEventListener('click', () => compartirProducto(p));
 
   vincularSelectColor(contenido);
 
@@ -539,6 +674,9 @@ function abrirModal(sku) {
 
 function cerrarModal() {
   document.getElementById('modalOverlay').classList.remove('open');
+  if (location.hash.startsWith('#producto=')) {
+    history.replaceState(null, '', location.pathname);
+  }
 }
 
 /* ---------------------------------------------
@@ -620,7 +758,7 @@ function renderCarrito() {
       const clave = claveCarrito(i.sku, i.color);
       return `
       <div class="cart-item">
-        <img src="${escapeAttr(i.foto)}" alt="${escapeAttr(i.nombre)}">
+        <img src="${escapeAttr(i.foto)}" alt="${escapeAttr(i.nombre)}" decoding="async">
         <div class="cart-item-info">
           <div class="cart-item-name">${escapeHtml(i.nombre)}</div>
           <div class="cart-item-sku">SKU ${escapeHtml(i.sku)}${i.color ? ' · Color: ' + escapeHtml(i.color) : ''}</div>
@@ -715,8 +853,21 @@ async function ordenar() {
   const total = CARRITO.reduce((a, i) => a + i.precio * i.cantidad, 0);
   const items = [...CARRITO];
 
+  const correo = document.getElementById('newsletterEmail').value.trim();
+  const nombre = document.getElementById('newsletterNombre').value.trim();
+  const recibirNovedades = document.getElementById('newsletterCheckbox').checked;
+
   try {
-    const query = `data=${encodeURIComponent(JSON.stringify({ items, total }))}`;
+    const payload = { items, total };
+    // El correo es opcional — solo se manda si escribió algo, para no
+    // guardar campos vacíos sin necesidad en el Sheet de Suscriptores.
+    if (correo) {
+      payload.correo = correo;
+      payload.nombre = nombre;
+      payload.recibirNovedades = recibirNovedades;
+    }
+
+    const query = `data=${encodeURIComponent(JSON.stringify(payload))}`;
     const data = await llamarAppsScript(query);
 
     if (!data.ok) throw new Error(data.error || 'Error al registrar el pedido');
@@ -726,6 +877,10 @@ async function ordenar() {
     renderCarrito();
     renderCatalogo();
     cerrarCarrito();
+
+    document.getElementById('newsletterEmail').value = '';
+    document.getElementById('newsletterNombre').value = '';
+    document.getElementById('newsletterCheckbox').checked = false;
 
     mostrarConfirmacion(data.orderId, total, items);
   } catch (err) {
@@ -809,17 +964,27 @@ async function manejarConsultaStatus(ev) {
       return;
     }
 
-    const clase = claseStatus(data.status);
+    const total = parseFloat(data.total) || 0;
+    const anticipo = parseFloat(data.anticipo) || 0;
+    const saldo = Math.max(0, total - anticipo);
+
     resultado.innerHTML = `
       <div class="status-card">
         <div class="status-card-top">
           <span class="status-order-id">Orden ${escapeHtml(data.orderId)}</span>
-          <span class="status-badge ${clase}">${escapeHtml(data.status)}</span>
+          <div class="status-badges">
+            <span class="status-badge ${claseStatus(data.status)}">${escapeHtml(data.status)}</span>
+            <span class="status-badge ${claseStatus(data.pago)}">${escapeHtml(data.pago)}</span>
+          </div>
         </div>
         <div class="status-detail">
           <strong>Fecha:</strong> ${escapeHtml(data.fecha)}<br>
           <strong>Productos:</strong> ${escapeHtml(data.productos)}<br>
-          <strong>Total:</strong> ${formatoPrecio(parseFloat(data.total) || 0)}
+          <strong>Total:</strong> ${formatoPrecio(total)}
+        </div>
+        <div class="status-pago-box">
+          <span>Anticipo recibido: ${formatoPrecio(anticipo)}</span>
+          <span class="saldo">Saldo: ${formatoPrecio(saldo)}</span>
         </div>
       </div>
     `;
@@ -830,6 +995,14 @@ async function manejarConsultaStatus(ev) {
     boton.disabled = false;
     boton.textContent = 'Consultar';
   }
+}
+
+function abrirStatusPopup() {
+  document.getElementById('statusOverlay').classList.add('open');
+}
+
+function cerrarStatusPopup() {
+  document.getElementById('statusOverlay').classList.remove('open');
 }
 
 /* ---------------------------------------------
@@ -911,8 +1084,15 @@ document.getElementById('confirmOverlay').addEventListener('click', (ev) => {
 
 document.getElementById('statusForm').addEventListener('submit', manejarConsultaStatus);
 
+document.getElementById('orderStatusToggle').addEventListener('click', abrirStatusPopup);
+document.getElementById('statusClose').addEventListener('click', cerrarStatusPopup);
+document.getElementById('statusOverlay').addEventListener('click', (ev) => {
+  if (ev.target.id === 'statusOverlay') cerrarStatusPopup();
+});
+
 document.getElementById('sortSelect').addEventListener('change', (ev) => {
   ORDEN_ACTIVO = ev.target.value;
+  reiniciarPagina();
   renderCatalogo();
 });
 
@@ -932,10 +1112,12 @@ document.getElementById('searchClose').addEventListener('click', () => {
   document.getElementById('searchBar').classList.remove('open');
   document.getElementById('searchInput').value = '';
   TEXTO_BUSQUEDA = '';
+  reiniciarPagina();
   renderCatalogo();
 });
 document.getElementById('searchInput').addEventListener('input', (ev) => {
   TEXTO_BUSQUEDA = ev.target.value.trim().toLowerCase();
+  reiniciarPagina();
   renderCatalogo();
 });
 // El filtrado ya pasa al vuelo mientras se escribe, así que al dar Enter
@@ -962,6 +1144,14 @@ async function iniciar() {
     console.error(err);
     mostrarErrorCatalogo();
     return;
+  }
+
+  // Si alguien entró desde un link compartido (#producto=SKU), abre ese
+  // producto directo en vez de dejarlo buscándolo en el catálogo.
+  const match = location.hash.match(/producto=([^&]+)/);
+  if (match) {
+    const sku = decodeURIComponent(match[1]);
+    if (PRODUCTOS.some(p => p.sku === sku)) abrirModal(sku);
   }
 
   // La popularidad ("más pedidos") se pide aparte y no bloquea la primera

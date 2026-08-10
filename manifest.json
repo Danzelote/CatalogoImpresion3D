@@ -1,0 +1,21 @@
+{
+  "name": "San Pedro 3D",
+  "short_name": "San Pedro 3D",
+  "description": "Catálogo de piezas impresas en 3D — listas para recoger en CDMX.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#17191c",
+  "theme_color": "#17191c",
+  "icons": [
+    {
+      "src": "TU_LOGO_URL_AQUI",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "TU_LOGO_URL_AQUI",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

@@ -1,10 +1,12 @@
-# Catálogo 3D
+# San Pedro 3D — Catálogo
 
 Catálogo de productos que se edita 100% desde Google Sheets y se publica
 como página estática en GitHub Pages. Incluye carrito con opciones de
 color, categorías y subcategorías automáticas, carrusel de novedades,
-consulta de status de pedido, botón flotante de WhatsApp, y botón de
-pedido que arma un mensaje de WhatsApp con número de orden.
+paginación, buscador, compartir producto, consulta de status de pedido
+(con desglose de anticipo/saldo), suscripción a newsletter, botón
+flotante de WhatsApp, y botón de pedido que arma un mensaje de WhatsApp
+con número de orden.
 
 ## Cómo está armado
 
@@ -41,6 +43,7 @@ Crea un Sheet nuevo con **tres pestañas**: Productos, Colores y Pedidos.
 - **Novedades**: pon `si` para que aparezca en el carrusel de "Novedades" hasta arriba. Columna opcional.
 - **Opciones de color**: pon `si` para que ese producto muestre un selector de color (tomado de la pestaña Colores) antes del botón de agregar. Si lo dejas vacío, el producto no pide color.
 - **Piezas por pedido**: opcional, texto libre (ej. "5 piezas", "Par", "1 pieza"). Se muestra en la tarjeta como "Piezas por pedido: X" — para que quede claro cuántas piezas trae el precio, sin que se confunda con la cantidad que el cliente elige en el carrito.
+- **Enviado en newsletter**: no la llenes tú — la usa el proyecto de newsletter (ver Paso 6) para saber qué productos ya se anunciaron por correo. Se crea sola la primera vez que corre.
 
 ### Pestaña "Colores"
 
@@ -56,13 +59,30 @@ Crea un Sheet nuevo con **tres pestañas**: Productos, Colores y Pedidos.
 
 No la llenes a mano. Para verla lista desde ya, corre **Catálogo 3D > Preparar hoja de Pedidos** en el menú del Sheet (aparece después del paso 2). Si no la preparas manualmente, se crea sola en cuanto llega el primer pedido real. Sus columnas son:
 
-| Número de orden | Fecha | Productos | Total | Status |
-|---|---|---|---|---|
-| 000001 | 03/08/2026 10:15 | Torre de dados - Color: Rojo (SKU: P-4K9QZ) x1 | $350 | Pendiente |
+| Número de orden | Fecha | Productos | Total | Status | Pago | Anticipo recibido | Notas |
+|---|---|---|---|---|---|---|---|
+| 000001 | 03/08/2026 10:15 | Torre de dados - Color: Rojo (SKU: P-4K9QZ) x1 | $350 | Por imprimir | Pendiente de anticipo | 0 | |
 
-No necesitas tocar las primeras 4 columnas — el Apps Script del paso 2 las escribe solo cada vez que alguien da clic en "Ordenar por WhatsApp", siempre con Status inicial **Pendiente**.
+No necesitas tocar Número de orden, Fecha, Productos ni Total — el Apps Script del paso 2 las escribe solas cada vez que alguien da clic en "Ordenar por WhatsApp".
 
-**Sí tienes que actualizar tú la columna Status** conforme avanza cada pedido, para que el cliente pueda consultarlo desde la web (sección "Consultar mi pedido"). Sugeridos: `Pendiente`, `En proceso`, `Listo`, `Entregado`, `Cancelado` (tienen colorcito especial en la web). Cualquier otra palabra también funciona, solo se muestra en gris neutro.
+**Sí tienes que actualizar tú Status, Pago, Anticipo recibido y Notas** conforme avanza cada pedido — el panel de pedidos (proyecto aparte) está pensado justo para esto desde el celular, sin necesidad de abrir el Sheet.
+
+- **Status** (progreso de producción), default al crearse: `Por imprimir`. Valores: `Por imprimir`, `Imprimiendo`, `Listo para entregar`, `Entregado`, `Cancelado`.
+- **Pago** (independiente del Status — un pedido puede estar "Listo para entregar" y aun así deber dinero, o viceversa), default al crearse: `Pendiente de anticipo`. Valores: `Pendiente de anticipo`, `Anticipo pagado`, `Pagado`.
+- **Anticipo recibido**: el monto en pesos que te ha dado el cliente. El saldo pendiente (Total − Anticipo) se calcula solo, no lo escribas tú — se ve tanto en el panel como en la consulta pública del cliente.
+- **Notas**: campo libre, 100% interno (nunca se muestra en la web pública) — punto de recolección, detalles del cliente, lo que necesites apuntar.
+
+Todos estos valores tienen su colorcito especial tanto en la web pública como en el panel de pedidos. Si escribes algo distinto a los valores sugeridos, sigue funcionando, solo se muestra en gris neutro.
+
+### Pestaña "Suscriptores"
+
+Tampoco la llenes a mano — se crea sola la primera vez que alguien deja su correo al ordenar con la casilla "Recibir novedades" marcada.
+
+| Correo | Nombre | Fecha de alta | Bienvenida enviada |
+|---|---|---|---|
+| ana@correo.com | Ana | 03/08/2026 10:20 | si |
+
+"Bienvenida enviada" la controla el proyecto de newsletter (Paso 6) — no la edites a mano salvo que quieras forzar que a alguien se le vuelva a mandar la bienvenida (bórrale el "si").
 
 ### Hazlo visible
 
@@ -94,6 +114,7 @@ const CONFIG = {
   WHATSAPP_NUMBER: '5215512345678',
   WHATSAPP_MENSAJE_CONTACTO: '¡Hola! Vi tu catálogo de impresiones 3D y tengo unas dudas.',
   MONEDA: 'MXN',
+  PRODUCTOS_POR_PAGINA: 12,
   LOGO_URL: '',
   BANNER_URL: '',
   DESCRIPCION_SITIO: 'Piezas impresas en 3D, listas para recoger — no vendemos archivos STL.',
@@ -103,6 +124,7 @@ const CONFIG = {
 ```
 
 - **SHEET_ID**: la parte de la URL del Sheet entre `/d/` y `/edit`.
+- **PRODUCTOS_POR_PAGINA**: cuántos productos se muestran antes de pasar a "Siguiente" abajo del catálogo. 12 por default.
 - **WHATSAPP_MENSAJE_CONTACTO**: el mensaje que se manda al dar clic en el botón flotante de WhatsApp (dudas generales — los pedidos usan su propio mensaje con número de orden, ese no se toca aquí).
 - **LOGO_URL**: pega ahí el link de Drive de tu logo cuando lo tengas listo (mismo formato que las fotos de producto). Mientras esté vacío, el encabezado solo muestra el texto "Catálogo 3D".
 - **BANNER_URL**: link de Drive de una imagen horizontal para mostrar arriba de la página. Mientras esté vacío, se sigue viendo el texto de `DESCRIPCION_SITIO` / `MENSAJE_MATERIAL` / `MENSAJE_ENVIO`. En cuanto le pongas una URL, esos textos se ocultan y se muestra la imagen en su lugar (es una cosa o la otra, no las dos a la vez).
@@ -130,9 +152,15 @@ Las imágenes ya solo se leen desde Drive o desde una URL externa completa — y
 
 ## Paso 5 — Publicar en GitHub Pages
 
-1. Crea un repositorio nuevo en GitHub y sube estos archivos: `index.html`, `style.css`, `script.js`.
+1. Crea un repositorio nuevo en GitHub y sube estos archivos: `index.html`, `style.css`, `script.js`, `manifest.json`.
 2. **Settings > Pages > Source**: rama `main`, carpeta `/ (root)`.
 3. En un par de minutos tu catálogo queda en `https://tu-usuario.github.io/tu-repo/`.
+
+## Paso 6 — Newsletter con Brevo (opcional)
+
+Si quieres mandar novedades por correo cada 15 días y un correo de bienvenida a suscriptores nuevos, hay un tercer proyecto de Apps Script para esto — ver [`newsletter-brevo/README.md`](../newsletter-brevo/README.md) para instalarlo. Es independiente y opcional: si no lo instalas, el catálogo funciona igual, solo que la casilla "Recibir novedades" del carrito guarda el correo en el Sheet pero nunca se le manda nada.
+
+Para que la sincronización de suscriptores a Brevo funcione (se dispara desde el Apps Script del catálogo, Paso 2), también hay que rellenar `BREVO_API_KEY` y `BREVO_LIST_ID` al inicio de `apps-script/Codigo.gs` — mismos valores que uses en el proyecto de newsletter.
 
 ## Cómo se usa día a día
 
@@ -140,7 +168,12 @@ Las imágenes ya solo se leen desde Drive o desde una URL externa completa — y
 - **Nueva categoría o subcategoría**: solo escríbela en la columna Categorias de cualquier producto (usa `>` para subcategoría) — el filtro se genera solo.
 - **Nuevo color**: agrégalo en la pestaña Colores con `Disponible: si`. Aparece automáticamente en el selector de cualquier producto con "Opciones de color" activado.
 - **Ver pedidos**: todos quedan en la pestaña "Pedidos" con número de orden, fecha, productos (incluye el color elegido si aplica), y total.
-- **Actualizar el status de un pedido**: edita la columna Status en "Pedidos" — el cliente lo ve al consultar su número de orden en la web.
+- **Actualizar un pedido**: Status, Pago, Anticipo recibido y Notas — desde el panel de pedidos (más rápido) o directo en el Sheet.
+- **Suscriptores**: se van llenando solos conforme la gente ordena con la casilla marcada. No hay que hacer nada manual salvo tener el newsletter instalado (Paso 6) si quieres que reciban correos.
+
+## Compartir un producto
+
+Cada producto tiene su propio link (`tu-sitio.com/#producto=SKU`). Al abrir un producto y darle "Compartir", en celular usa el compartir nativo del teléfono (WhatsApp, Mensajes, etc.); en computadora abre WhatsApp Web con el link ya listo. Quien reciba el link, al abrirlo, ve ese producto directo sin tener que buscarlo.
 
 ## Búsqueda, Novedades y orden del catálogo
 
@@ -153,4 +186,7 @@ Las imágenes ya solo se leen desde Drive o desde una URL externa completa — y
 - El carrito vive en el navegador de cada visitante (localStorage), así que no se comparte entre dispositivos.
 - Un mismo producto puede estar varias veces en el carrito si el cliente elige distintos colores — cada color es una línea independiente.
 - El número de orden es consecutivo y lo asigna el propio Google Sheet al momento de ordenar (evita que dos personas ordenando al mismo tiempo choquen, gracias a `LockService`).
+- Los datos del Sheet se guardan 5 minutos en el celular del visitante (localStorage) para que volver a la pestaña se sienta instantáneo. Si actualizas un producto y no lo ves reflejado de inmediato, espera esos 5 minutos o pide al visitante recargar con `Ctrl+Shift+R` / `Cmd+Shift+R`.
+- El catálogo pagina de 12 en 12 (ajustable en `CONFIG.PRODUCTOS_POR_PAGINA`) — cambiar de categoría, buscar, o cambiar el orden regresa siempre a la página 1.
+- `manifest.json` permite "Agregar a pantalla de inicio" en Android; en iPhone funciona por el `apple-touch-icon` del `<head>`. Ambos necesitan la URL de tu logo rellenada (ver la sección de ícono más arriba) para verse completos.
 - Si algún día quieres agregar más columnas (por ejemplo "Material" o "Tiempo de impresión"), solo agrégalas al Sheet y luego a `normalizarProducto()` en `script.js`.
