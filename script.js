@@ -8,18 +8,18 @@
 --------------------------------------------- */
 const CONFIG = {
   // ID del Google Sheet (está en la URL: .../d/ESTE_ID/edit)
-  SHEET_ID: '1wyY5BBbm5ZJBYXs93H21l_2tRvCrYmWrbX_RLUrZjzs',
+  SHEET_ID: 'TU_SHEET_ID_AQUI',
 
   // Nombres exactos de las pestañas
   SHEET_PRODUCTOS: 'Productos',
   SHEET_COLORES: 'Colores',
 
   // URL del Apps Script publicado como Web App (ver README)
-  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbyx2v7w4F13VmmqHiU8GIDr1yto5ZwmPSiIOWoTPbVYBnz4Buxxvgses-23y-EzuZI/exec',
+  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/TU_DEPLOYMENT_ID/exec',
 
   // Número de WhatsApp donde llegan los pedidos y las dudas de contacto,
   // con código de país, solo dígitos (ej. México: 52 + 10 dígitos)
-  WHATSAPP_NUMBER: '5215531605449',
+  WHATSAPP_NUMBER: '5215512345678',
 
   // Mensaje predeterminado del botón flotante de contacto (dudas generales,
   // no pedidos — esos usan su propio mensaje con número de orden)
@@ -41,12 +41,12 @@ const CONFIG = {
 
   // URL de la imagen de tu logotipo (Drive o cualquier URL completa).
   // Si la dejas vacía, solo se muestra el texto "Catálogo 3D".
-  LOGO_URL: 'https://drive.google.com/file/d/1zHxQXHC1-_sLhD6HbiLaClyD6acicmmI/view?usp=share_link',
+  LOGO_URL: '',
 
   // URL de una imagen de banner horizontal para el encabezado (Drive o
   // cualquier URL completa). Si la llenas, se muestra esa imagen en vez
   // del texto de abajo. Si la dejas vacía, se sigue viendo el texto.
-  BANNER_URL: 'https://drive.google.com/file/d/1lw-VuxMoLssqB7HgfZG7viBMaGD0bnpO/view?usp=share_link',
+  BANNER_URL: '',
 
   // Textos del encabezado — edítalos las veces que quieras sin tocar HTML.
   DESCRIPCION_SITIO: 'Piezas impresas en 3D, listas para recoger — no vendemos archivos STL.',
@@ -413,22 +413,6 @@ function renderCatalogo() {
     });
   });
 
-  catalogEl.querySelectorAll('.product-photos').forEach(el => {
-    let idx = 0;
-    const imgs = el.querySelectorAll('img');
-    const dots = el.querySelectorAll('.photo-dots span');
-    if (imgs.length > 1) {
-      el.addEventListener('click', (ev) => {
-        ev.stopPropagation();
-        imgs[idx].classList.remove('active');
-        dots[idx] && dots[idx].classList.remove('active');
-        idx = (idx + 1) % imgs.length;
-        imgs[idx].classList.add('active');
-        dots[idx] && dots[idx].classList.add('active');
-      });
-    }
-  });
-
   catalogEl.querySelectorAll('.color-select').forEach(sel => {
     sel.addEventListener('click', (ev) => ev.stopPropagation());
   });
@@ -615,12 +599,6 @@ function abrirModal(sku) {
           ${enCarrito ? 'Agregado ✓' : `Agregar ${ICONO_CARRITO}`}
         </button>
       </div>
-      <div class="modal-actions">
-        <button class="share-btn" id="modalShareBtn">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
-          Compartir
-        </button>
-      </div>
     </div>
   `;
 
@@ -665,7 +643,11 @@ function abrirModal(sku) {
     manejarClicAgregar(ev.currentTarget, contenido);
   });
 
-  document.getElementById('modalShareBtn').addEventListener('click', () => compartirProducto(p));
+  // El botón de compartir ahora vive en la barra fija (fuera de modalContent,
+  // así que no se vuelve a crear cada vez) — se reasigna con onclick para
+  // que siempre apunte al producto actualmente abierto, sin acumular
+  // listeners de productos anteriores.
+  document.getElementById('modalShareBtn').onclick = () => compartirProducto(p);
 
   vincularSelectColor(contenido);
 

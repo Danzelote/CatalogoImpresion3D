@@ -58,7 +58,7 @@ img { max-width: 100%; display: block; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
 }
 
 .brand {
@@ -69,12 +69,21 @@ img { max-width: 100%; display: block; }
   font-weight: 600;
   font-size: 1.35rem;
   letter-spacing: -0.01em;
+  flex: 1;
+  min-width: 0;
+}
+
+.brand span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .brand-logo {
   height: 60px;
   width: auto;
   border-radius: 6px;
+  flex-shrink: 0;
 }
 
 .icon {
@@ -87,6 +96,7 @@ img { max-width: 100%; display: block; }
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-shrink: 0;
 }
 
 .icon-btn {
@@ -112,12 +122,12 @@ img { max-width: 100%; display: block; }
   color: var(--ink);
   font-family: var(--font-mono);
   font-size: 0.85rem;
-  padding: 10px 16px;
+  padding: 10px 14px;
   border-radius: var(--radius);
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   transition: border-color 0.15s ease, transform 0.15s ease;
 }
 
@@ -985,13 +995,14 @@ img { max-width: 100%; display: block; }
   top: 0;
   z-index: 3;
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   padding: 14px 14px 0;
   pointer-events: none;
-  height: 0; /* no ocupa espacio propio, solo posiciona el botón */
+  height: 0; /* no ocupa espacio propio, solo posiciona los botones */
 }
 
-.modal-close {
+.modal-close,
+.modal-share-static {
   pointer-events: auto;
   background: rgba(23, 25, 28, 0.85);
   border: 1px solid var(--line);
@@ -999,10 +1010,19 @@ img { max-width: 100%; display: block; }
   width: 34px;
   height: 34px;
   border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-close {
   font-size: 1.3rem;
   line-height: 1;
-  cursor: pointer;
 }
+
+.modal-share-static:hover { border-color: var(--teal); color: var(--teal); }
+.modal-share-static .icon { width: 16px; height: 16px; }
 
 .modal-content {
   display: grid;
@@ -1052,31 +1072,6 @@ img { max-width: 100%; display: block; }
   margin-top: 8px;
 }
 
-.modal-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.share-btn {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  background: var(--panel-raised);
-  border: 1px solid var(--line);
-  color: var(--ink-muted);
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
-  padding: 9px 12px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: border-color 0.15s ease, color 0.15s ease;
-}
-
-.share-btn:hover { border-color: var(--teal); color: var(--ink); }
-.share-btn .icon { width: 14px; height: 14px; }
 
 @media (max-width: 640px) {
   .modal-content { grid-template-columns: 1fr; }
@@ -1339,8 +1334,12 @@ img { max-width: 100%; display: block; }
 .site-footer a:hover { text-decoration: underline; }
 
 @media (max-width: 640px) {
-  .site-header { padding: 14px 16px; }
+  .site-header { padding: 14px 16px; gap: 8px; }
   .brand-logo { height: 46px; }
+  .brand { font-size: 1.05rem; gap: 8px; }
+  .header-actions { gap: 6px; }
+  .icon-btn { width: 36px; height: 36px; }
+  .cart-toggle { padding: 9px 11px; }
   .search-bar { padding: 10px 16px; }
   .hero { padding: 18px 16px 4px; }
   .whatsapp-float { width: 50px; height: 50px; bottom: 16px; right: 16px; }
