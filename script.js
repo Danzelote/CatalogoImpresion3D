@@ -787,21 +787,10 @@ async function ordenar() {
 
   const total = CARRITO.reduce((a, i) => a + i.precio * i.cantidad, 0);
   const items = [...CARRITO];
-
-  const correo = document.getElementById('newsletterEmail').value.trim();
-  const nombre = document.getElementById('newsletterNombre').value.trim();
-  const recibirNovedades = document.getElementById('newsletterCheckbox').checked;
+  const nombreCliente = document.getElementById('nombreClienteInput').value.trim();
 
   try {
-    const payload = { items, total };
-    // El correo es opcional — solo se manda si escribió algo, para no
-    // guardar campos vacíos sin necesidad en el Sheet de Suscriptores.
-    if (correo) {
-      payload.correo = correo;
-      payload.nombre = nombre;
-      payload.recibirNovedades = recibirNovedades;
-    }
-
+    const payload = { items, total, nombre: nombreCliente };
     const query = `data=${encodeURIComponent(JSON.stringify(payload))}`;
     const data = await llamarAppsScript(query);
 
@@ -813,11 +802,9 @@ async function ordenar() {
     renderCatalogo();
     cerrarCarrito();
 
-    document.getElementById('newsletterEmail').value = '';
-    document.getElementById('newsletterNombre').value = '';
-    document.getElementById('newsletterCheckbox').checked = false;
+    document.getElementById('nombreClienteInput').value = '';
 
-    mostrarConfirmacion(data.orderId, total, items);
+    mostrarConfirmacion(data.orderId, total, items, nombreCliente);
   } catch (err) {
     console.error(err);
     alert('No se pudo generar el número de orden automáticamente. Revisa la URL de Apps Script en script.js. Tu pedido no se perdió, sigue en el carrito.');
@@ -827,13 +814,13 @@ async function ordenar() {
   }
 }
 
-function mostrarConfirmacion(orderId, total, items) {
+function mostrarConfirmacion(orderId, total, items, nombreCliente) {
   document.getElementById('confirmText').textContent =
     `Tu pedido quedó guardado con el número de orden ${orderId}.`;
 
   const btn = document.getElementById('confirmWhatsappBtn');
   btn.onclick = () => {
-    abrirWhatsApp(orderId, total, items);
+    abrirWhatsApp(orderId, total, items, nombreCliente);
     cerrarConfirmacion();
   };
 
@@ -844,14 +831,18 @@ function cerrarConfirmacion() {
   document.getElementById('confirmOverlay').classList.remove('open');
 }
 
-function abrirWhatsApp(orderId, total, items) {
+function abrirWhatsApp(orderId, total, items, nombreCliente) {
   const listado = items.map(i => {
     const colorTxt = i.color ? ` - Color: ${i.color}` : '';
     return `- ${i.nombre}${colorTxt} (SKU: ${i.sku}) x${i.cantidad}`;
   }).join('\n');
 
+  const saludo = nombreCliente
+    ? `Hola, soy ${nombreCliente} y acabo de hacer un pedido con el número de orden (${orderId})`
+    : `¡Hola! Acabo de hacer un pedido con el número de orden (${orderId})`;
+
   const mensaje =
-    `¡Hola! Acabo de hacer un pedido con el número de orden (${orderId})\n\n` +
+    `${saludo}\n\n` +
     `${listado}\n\n` +
     `Total: ${formatoPrecio(total)}`;
 
@@ -1047,19 +1038,105 @@ document.getElementById('searchClose').addEventListener('click', () => {
   document.getElementById('searchBar').classList.remove('open');
   document.getElementById('searchInput').value = '';
   TEXTO_BUSQUEDA = '';
+  mostrarOcultarNovedades();
   reiniciarPagina();
   renderCatalogo();
 });
 document.getElementById('searchInput').addEventListener('input', (ev) => {
   TEXTO_BUSQUEDA = ev.target.value.trim().toLowerCase();
+  mostrarOcultarNovedades();
   reiniciarPagina();
   renderCatalogo();
 });
+
+// Con el teclado abierto en celular, Novedades le quita espacio a los
+// resultados de la búsqueda (a veces quedan tapados por el teclado) —
+// se oculta mientras se está buscando algo, y regresa al borrar/cerrar.
+function mostrarOcultarNovedades() {
+  const seccion = document.getElementById('novedadesSection');
+  if (!seccion) return;
+  if (TEXTO_BUSQUEDA) {
+    seccion.dataset.ocultaPorBusqueda = 'si';
+    seccion.style.display = 'none';
+  } else if (seccion.dataset.ocultaPorBusqueda === 'si') {
+    delete seccion.dataset.ocultaPorBusqueda;
+    // Solo la regresamos si sí hay Novedades que mostrar — renderNovedades()
+    // ya decide eso normalmente, así que se lo dejamos a él.
+    renderNovedades();
+  }
+}
+
 // El filtrado ya pasa al vuelo mientras se escribe, así que al dar Enter
 // no hay que recargar nada — solo se cierra el teclado del celular.
 document.getElementById('searchBar').addEventListener('submit', (ev) => {
   ev.preventDefault();
   document.getElementById('searchInput').blur();
+});
+
+/* ---------------------------------------------
+   POPUP DE SUSCRIPCIÓN A NOVEDADES (entrada al sitio)
+--------------------------------------------- */
+const CLAVE_POPUP_NEWSLETTER = 'catalogo3d_popup_newsletter';
+
+function yaVioPopupNewsletter() {
+  try {
+    return !!localStorage.getItem(CLAVE_POPUP_NEWSLETTER);
+  } catch {
+    return true; // si localStorage falla, mejor no insistir
+  }
+}
+
+function marcarPopupNewsletterVisto() {
+  try {
+    localStorage.setItem(CLAVE_POPUP_NEWSLETTER, 'si');
+  } catch {
+    // no es grave si no se pudo guardar
+  }
+}
+
+function mostrarPopupNewsletter() {
+  if (yaVioPopupNewsletter()) return;
+  document.getElementById('newsletterOverlay').classList.add('open');
+}
+
+function cerrarPopupNewsletter() {
+  document.getElementById('newsletterOverlay').classList.remove('open');
+  marcarPopupNewsletterVisto();
+}
+
+document.getElementById('newsletterClose').addEventListener('click', cerrarPopupNewsletter);
+document.getElementById('newsletterAhoraNo').addEventListener('click', cerrarPopupNewsletter);
+document.getElementById('newsletterOverlay').addEventListener('click', (ev) => {
+  if (ev.target.id === 'newsletterOverlay') cerrarPopupNewsletter();
+});
+
+document.getElementById('newsletterForm').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const input = document.getElementById('newsletterPopupEmail');
+  const boton = document.getElementById('newsletterPopupBtn');
+  const resultado = document.getElementById('newsletterPopupResult');
+  const correo = input.value.trim();
+  if (!correo) return;
+
+  boton.disabled = true;
+  boton.textContent = 'Enviando…';
+  resultado.textContent = '';
+
+  try {
+    const query = `accion=suscribir&correo=${encodeURIComponent(correo)}`;
+    const data = await llamarAppsScript(query);
+    if (!data.ok) throw new Error(data.error || 'No se pudo suscribir');
+
+    resultado.innerHTML = '<div class="status-not-found" style="color:var(--teal);">¡Listo! Ya estás suscrito.</div>';
+    marcarPopupNewsletterVisto();
+    setTimeout(cerrarPopupNewsletter, 1400);
+  } catch (err) {
+    console.error(err);
+    resultado.innerHTML = '<div class="status-not-found">No se pudo suscribir, intenta de nuevo.</div>';
+  } finally {
+    boton.disabled = false;
+    boton.textContent = 'Suscribirme';
+  }
 });
 
 async function iniciar() {
@@ -1094,6 +1171,10 @@ async function iniciar() {
   cargarPopularidad().then(() => {
     if (ORDEN_ACTIVO === 'populares') renderCatalogo();
   });
+
+  // Popup de novedades: aparece unos segundos después, para no interrumpir
+  // apenas se abre la página — y solo si nunca se ha visto en este navegador.
+  setTimeout(mostrarPopupNewsletter, 2500);
 }
 
 iniciar();

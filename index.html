@@ -142,6 +142,21 @@
   </div>
 </div>
 
+<!-- Suscripción a novedades (popup de entrada) -->
+<div class="modal-overlay" id="newsletterOverlay">
+  <div class="confirm-box">
+    <button class="modal-close modal-close-static" id="newsletterClose">&times;</button>
+    <h2>No te pierdas de las novedades</h2>
+    <p class="section-hint">Te avisamos por correo cuando agreguemos piezas nuevas al catálogo.</p>
+    <form class="status-form" id="newsletterForm">
+      <input type="email" id="newsletterPopupEmail" placeholder="tu@correo.com" autocomplete="email">
+      <button type="submit" id="newsletterPopupBtn">Suscribirme</button>
+    </form>
+    <button type="button" class="newsletter-ahora-no" id="newsletterAhoraNo">Ahora no</button>
+    <div class="status-result" id="newsletterPopupResult"></div>
+  </div>
+</div>
+
 <!-- Confirmación antes de abrir WhatsApp -->
 <div class="modal-overlay" id="confirmOverlay">
   <div class="confirm-box">
@@ -181,13 +196,8 @@
       <span>Total</span>
       <span id="cartTotal">$0</span>
     </div>
-    <div class="newsletter-optin">
-      <input type="email" id="newsletterEmail" placeholder="Tu correo (opcional)" autocomplete="email">
-      <input type="text" id="newsletterNombre" placeholder="Tu nombre (opcional)" autocomplete="name">
-      <label class="checkbox-row">
-        <input type="checkbox" id="newsletterCheckbox">
-        Recibir novedades y promociones por correo
-      </label>
+    <div class="nombre-cliente-wrap">
+      <input type="text" id="nombreClienteInput" placeholder="Tu nombre (opcional)" autocomplete="name">
     </div>
     <button class="order-btn" id="orderBtn">Ordenar por WhatsApp</button>
     <div class="order-hint">Se abrirá WhatsApp con tu pedido ya redactado.</div>

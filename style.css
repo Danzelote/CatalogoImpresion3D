@@ -577,16 +577,13 @@ img { max-width: 100%; display: block; }
 
 .cart-total span:last-child { font-weight: 700; font-size: 1.15rem; }
 
-.newsletter-optin {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+.nombre-cliente-wrap {
   padding: 10px 0;
   border-top: 1px dashed var(--line);
 }
 
-.newsletter-optin input[type="email"],
-.newsletter-optin input[type="text"] {
+.nombre-cliente-wrap input {
+  width: 100%;
   background: var(--panel-raised);
   border: 1px solid var(--line);
   color: var(--ink);
@@ -596,23 +593,21 @@ img { max-width: 100%; display: block; }
   border-radius: 6px;
 }
 
-.newsletter-optin input:focus { outline: none; border-color: var(--filament); }
+.nombre-cliente-wrap input:focus { outline: none; border-color: var(--filament); }
 
-.checkbox-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.76rem;
+.newsletter-ahora-no {
+  display: block;
+  margin: 10px auto 0;
+  background: none;
+  border: none;
   color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  text-decoration: underline;
   cursor: pointer;
 }
 
-.checkbox-row input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--filament);
-  flex-shrink: 0;
-}
+.newsletter-ahora-no:hover { color: var(--ink); }
 
 .order-btn {
   background: var(--filament);
