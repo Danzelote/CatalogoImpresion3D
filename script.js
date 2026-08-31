@@ -142,6 +142,15 @@ function normalizarProducto(row) {
   const precioTexto = (row['Precio'] || '').toString().trim();
   const precio = precioTexto ? parseFloat(precioTexto.replace(/[^0-9.]/g, '')) : NaN;
 
+  // Descuento por mayoreo: solo cuenta si AMBOS campos están llenos y son
+  // números válidos mayores a 0 — si falta uno de los dos, el producto
+  // simplemente no tiene descuento.
+  const mayoreoMinimoTexto = (row['Cantidad mínima para descuento'] || '').toString().trim();
+  const mayoreoDescuentoTexto = (row['% de descuento'] || '').toString().trim();
+  const mayoreoMinimo = mayoreoMinimoTexto ? parseInt(mayoreoMinimoTexto, 10) : NaN;
+  const mayoreoDescuento = mayoreoDescuentoTexto ? parseFloat(mayoreoDescuentoTexto.replace(/[^0-9.]/g, '')) : NaN;
+  const tieneMayoreo = !isNaN(mayoreoMinimo) && mayoreoMinimo > 0 && !isNaN(mayoreoDescuento) && mayoreoDescuento > 0;
+
   return {
     nombre: (row['Nombre'] || '').trim(),
     sku: (row['SKU'] || '').trim(),
@@ -154,6 +163,8 @@ function normalizarProducto(row) {
     novedad: (row['Novedades'] || '').toString().trim().toLowerCase() === 'si',
     opcionesColor: (row['Opciones de color'] || row['Opciones De Color'] || '').toString().trim().toLowerCase() === 'si',
     cantidadPorPieza: (row['Piezas por pedido'] || '').toString().trim(),
+    mayoreoMinimo: tieneMayoreo ? mayoreoMinimo : null,
+    mayoreoDescuento: tieneMayoreo ? mayoreoDescuento : null,
   };
 }
 
@@ -366,9 +377,6 @@ function renderCatalogo() {
     });
   });
 
-  catalogEl.querySelectorAll('.color-select').forEach(sel => {
-    sel.addEventListener('click', (ev) => ev.stopPropagation());
-  });
   vincularSelectColor(catalogEl);
 
   catalogEl.querySelectorAll('.product-card').forEach(card => {
@@ -420,37 +428,74 @@ function opcionesColorHTML(sku) {
   return `
     <div class="color-select-wrap">
       <label>Color</label>
-      <div class="color-select-row">
-        <select class="color-select" data-sku="${escapeAttr(sku)}">
-          <option value="">Elige un color</option>
-          ${COLORES_DISPONIBLES.map(c => `<option value="${escapeAttr(c.nombre)}">${escapeHtml(c.nombre)}</option>`).join('')}
-        </select>
-        <img class="color-preview" alt="Vista previa del color" decoding="async">
-      </div>
+      <button type="button" class="color-trigger" data-sku="${escapeAttr(sku)}">
+        <img class="color-trigger-preview" alt="" decoding="async">
+        <span class="color-trigger-label">Elige un color</span>
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+      </button>
+      <input type="hidden" class="color-value" data-sku="${escapeAttr(sku)}" value="">
       <span class="color-hint">¿No ves tu color? Pregúntanos por WhatsApp.</span>
     </div>
   `;
 }
 
-// Cambia la miniatura junto al selector según el color elegido, usando
-// la foto de esa pestaña "Colores" del Sheet.
+// Conecta cada botón "Elige un color" para que abra el selector visual
+// (popup con fotos), en vez del <select> nativo — en iPhone, un <select>
+// solo puede mostrar texto, nunca imágenes.
 function vincularSelectColor(contenedor) {
-  contenedor.querySelectorAll('.color-select-wrap').forEach(wrap => {
-    const select = wrap.querySelector('.color-select');
-    const preview = wrap.querySelector('.color-preview');
-    if (!select || !preview) return;
-
-    select.addEventListener('change', () => {
-      const color = COLORES_DISPONIBLES.find(c => c.nombre === select.value);
-      if (color && color.foto) {
-        preview.src = color.foto;
-        preview.classList.add('visible');
-      } else {
-        preview.classList.remove('visible');
-        preview.removeAttribute('src');
-      }
+  contenedor.querySelectorAll('.color-trigger').forEach(trigger => {
+    trigger.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      abrirSelectorColor(trigger);
     });
   });
+}
+
+let COLOR_PICKER_TRIGGER = null;
+
+function abrirSelectorColor(trigger) {
+  COLOR_PICKER_TRIGGER = trigger;
+  const wrap = trigger.closest('.color-select-wrap');
+  const valorActual = wrap.querySelector('.color-value').value;
+
+  const grid = document.getElementById('colorPickerGrid');
+  grid.innerHTML = COLORES_DISPONIBLES.map(c => `
+    <button type="button" class="color-swatch-option ${c.nombre === valorActual ? 'selected' : ''}" data-color="${escapeAttr(c.nombre)}">
+      ${c.foto ? `<img src="${escapeAttr(c.foto)}" alt="${escapeAttr(c.nombre)}" decoding="async">` : '<div class="color-swatch-sin-foto"></div>'}
+      <span>${escapeHtml(c.nombre)}</span>
+    </button>
+  `).join('');
+
+  grid.querySelectorAll('.color-swatch-option').forEach(btn => {
+    btn.addEventListener('click', () => elegirColor(btn.dataset.color));
+  });
+
+  document.getElementById('colorPickerOverlay').classList.add('open');
+}
+
+function elegirColor(nombreColor) {
+  if (!COLOR_PICKER_TRIGGER) return;
+  const wrap = COLOR_PICKER_TRIGGER.closest('.color-select-wrap');
+  const color = COLORES_DISPONIBLES.find(c => c.nombre === nombreColor);
+
+  wrap.querySelector('.color-value').value = nombreColor;
+  wrap.querySelector('.color-trigger-label').textContent = nombreColor;
+
+  const previewImg = wrap.querySelector('.color-trigger-preview');
+  if (color && color.foto) {
+    previewImg.src = color.foto;
+    previewImg.classList.add('visible');
+  } else {
+    previewImg.classList.remove('visible');
+    previewImg.removeAttribute('src');
+  }
+
+  cerrarSelectorColor();
+}
+
+function cerrarSelectorColor() {
+  document.getElementById('colorPickerOverlay').classList.remove('open');
+  COLOR_PICKER_TRIGGER = null;
 }
 
 function tarjetaProducto(p) {
@@ -460,6 +505,7 @@ function tarjetaProducto(p) {
       <div class="product-photos">
         ${p.fotos.map((f, i) => `<img src="${escapeAttr(f)}" alt="${escapeAttr(p.nombre)}" class="${i === 0 ? 'active' : ''}" loading="lazy" decoding="async">`).join('')}
         ${p.fotos.length > 1 ? `<div class="photo-dots">${p.fotos.map((_, i) => `<span class="${i === 0 ? 'active' : ''}"></span>`).join('')}</div>` : ''}
+        ${p.mayoreoMinimo ? `<span class="mayoreo-badge">🏷️ Descuento por mayoreo</span>` : ''}
       </div>
       <div class="product-body">
         <div class="product-name">${escapeHtml(p.nombre)}</div>
@@ -484,19 +530,21 @@ function tarjetaProducto(p) {
 // lo requiere, antes de mandarlo al carrito.
 function manejarClicAgregar(boton, contenedor) {
   const sku = boton.dataset.sku;
-  const colorSelect = contenedor.querySelector('.color-select');
-  const color = colorSelect ? colorSelect.value : '';
+  const colorValue = contenedor.querySelector('.color-value');
+  const color = colorValue ? colorValue.value : '';
 
-  if (colorSelect && !color) {
-    colorSelect.focus();
-    colorSelect.classList.add('color-select-error');
-    setTimeout(() => colorSelect.classList.remove('color-select-error'), 1200);
+  if (colorValue && !color) {
+    const trigger = contenedor.querySelector('.color-trigger');
+    if (trigger) {
+      trigger.classList.add('color-select-error');
+      setTimeout(() => trigger.classList.remove('color-select-error'), 1200);
+    }
     return;
   }
 
   agregarAlCarrito(sku, color);
 
-  if (colorSelect) {
+  if (colorValue) {
     boton.innerHTML = 'Agregado ✓';
   }
 }
@@ -545,6 +593,7 @@ function abrirModal(sku) {
       ${p.cantidadPorPieza ? `<div class="product-quantity">Piezas por pedido: ${escapeHtml(p.cantidadPorPieza)}</div>` : ''}
       ${p.categorias.length ? `<div class="product-tags">${p.categorias.map(c => `<span class="product-tag">${escapeHtml(etiquetaCategoria(c))}</span>`).join('')}</div>` : ''}
       <p class="modal-desc">${escapeHtml(p.descripcion) || 'Sin descripción.'}</p>
+      ${p.mayoreoMinimo ? `<div class="mayoreo-detalle">🏷️ Compra ${p.mayoreoMinimo} piezas o más y obtén ${p.mayoreoDescuento}% de descuento</div>` : ''}
       ${p.opcionesColor ? opcionesColorHTML(p.sku) : ''}
       <div class="modal-footer">
         <span class="product-price">${formatoPrecio(p.precio)}</span>
@@ -678,6 +727,18 @@ function quitarDelCarrito(clave) {
   renderCatalogo();
 }
 
+// Si el producto de este renglón del carrito tiene descuento por mayoreo
+// y ya se alcanzó el mínimo (con esa cantidad exacta de ESE color, los
+// colores no se suman entre sí), regresa el precio ya con descuento.
+// Si no aplica, regresa el precio normal sin tocar.
+function calcularPrecioUnitario(item) {
+  const producto = PRODUCTOS.find(p => p.sku === item.sku);
+  if (producto && producto.mayoreoMinimo && item.cantidad >= producto.mayoreoMinimo) {
+    return item.precio * (1 - producto.mayoreoDescuento / 100);
+  }
+  return item.precio;
+}
+
 function renderCarrito() {
   const itemsEl = document.getElementById('cartItems');
   const countEl = document.getElementById('cartCount');
@@ -691,6 +752,23 @@ function renderCarrito() {
   } else {
     itemsEl.innerHTML = CARRITO.map(i => {
       const clave = claveCarrito(i.sku, i.color);
+      const producto = PRODUCTOS.find(p => p.sku === i.sku);
+      const precioUnitario = calcularPrecioUnitario(i);
+      const conDescuento = precioUnitario < i.precio;
+
+      let precioHTML = formatoPrecio(precioUnitario * i.cantidad);
+      if (conDescuento) {
+        precioHTML = `<span class="precio-tachado">${formatoPrecio(i.precio * i.cantidad)}</span> ${formatoPrecio(precioUnitario * i.cantidad)}`;
+      }
+
+      let empujonHTML = '';
+      if (producto && producto.mayoreoMinimo && !conDescuento) {
+        const faltan = producto.mayoreoMinimo - i.cantidad;
+        if (faltan > 0) {
+          empujonHTML = `<div class="mayoreo-empujon">Agrega ${faltan} más y desbloqueas ${producto.mayoreoDescuento}% de descuento</div>`;
+        }
+      }
+
       return `
       <div class="cart-item">
         <img src="${escapeAttr(i.foto)}" alt="${escapeAttr(i.nombre)}" decoding="async">
@@ -703,8 +781,9 @@ function renderCarrito() {
             <button class="qty-btn" data-clave="${escapeAttr(clave)}" data-delta="1">+</button>
             <button class="cart-remove" data-clave="${escapeAttr(clave)}">quitar</button>
           </div>
+          ${empujonHTML}
         </div>
-        <div class="cart-item-price">${formatoPrecio(i.precio * i.cantidad)}</div>
+        <div class="cart-item-price">${precioHTML}</div>
       </div>
     `;
     }).join('');
@@ -717,7 +796,7 @@ function renderCarrito() {
     });
   }
 
-  const total = CARRITO.reduce((a, i) => a + i.precio * i.cantidad, 0);
+  const total = CARRITO.reduce((a, i) => a + calcularPrecioUnitario(i) * i.cantidad, 0);
   totalEl.textContent = formatoPrecio(total);
 }
 
@@ -785,7 +864,7 @@ async function ordenar() {
   orderBtn.disabled = true;
   orderBtn.textContent = 'Generando pedido…';
 
-  const total = CARRITO.reduce((a, i) => a + i.precio * i.cantidad, 0);
+  const total = CARRITO.reduce((a, i) => a + calcularPrecioUnitario(i) * i.cantidad, 0);
   const items = [...CARRITO];
   const nombreCliente = document.getElementById('nombreClienteInput').value.trim();
 
@@ -1110,6 +1189,11 @@ document.getElementById('newsletterOverlay').addEventListener('click', (ev) => {
   if (ev.target.id === 'newsletterOverlay') cerrarPopupNewsletter();
 });
 
+document.getElementById('colorPickerClose').addEventListener('click', cerrarSelectorColor);
+document.getElementById('colorPickerOverlay').addEventListener('click', (ev) => {
+  if (ev.target.id === 'colorPickerOverlay') cerrarSelectorColor();
+});
+
 document.getElementById('newsletterForm').addEventListener('submit', async (ev) => {
   ev.preventDefault();
   const input = document.getElementById('newsletterPopupEmail');
@@ -1152,6 +1236,10 @@ async function iniciar() {
     renderCategorias();
     renderNovedades();
     renderCatalogo();
+    // El carrito ya se pintó arriba con datos viejos (o vacío) antes de
+    // que cargaran los productos — se vuelve a calcular ahora que ya
+    // se conocen las reglas de descuento por mayoreo de cada producto.
+    renderCarrito();
   } catch (err) {
     console.error(err);
     mostrarErrorCatalogo();

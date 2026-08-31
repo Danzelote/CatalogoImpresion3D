@@ -300,6 +300,21 @@ img { max-width: 100%; display: block; }
 
 .photo-dots span.active { background: var(--filament); }
 
+.mayoreo-badge {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  background: rgba(23, 25, 28, 0.85);
+  border: 1px solid var(--filament-dim);
+  color: var(--filament);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
 .product-body {
   padding: 16px;
   display: flex;
@@ -523,6 +538,14 @@ img { max-width: 100%; display: block; }
   margin-top: 6px;
 }
 
+.mayoreo-empujon {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--teal);
+  margin-top: 5px;
+  line-height: 1.4;
+}
+
 .qty-btn {
   width: 22px;
   height: 22px;
@@ -539,6 +562,13 @@ img { max-width: 100%; display: block; }
   font-family: var(--font-mono);
   font-size: 0.85rem;
   white-space: nowrap;
+}
+
+.precio-tachado {
+  text-decoration: line-through;
+  color: var(--ink-muted);
+  font-size: 0.75rem;
+  display: block;
 }
 
 .cart-remove {
@@ -608,6 +638,60 @@ img { max-width: 100%; display: block; }
 }
 
 .newsletter-ahora-no:hover { color: var(--ink); }
+
+/* ---------- Popup selector visual de color ---------- */
+
+.confirm-box.color-picker-box {
+  width: min(480px, 100%);
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.color-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+  text-align: left;
+}
+
+.color-swatch-option {
+  background: var(--panel-raised);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 6px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  transition: border-color 0.15s ease, transform 0.1s ease;
+}
+
+.color-swatch-option:hover { border-color: var(--filament); }
+.color-swatch-option:active { transform: scale(0.96); }
+
+.color-swatch-option.selected {
+  border-color: var(--filament);
+  box-shadow: 0 0 0 2px rgba(255, 106, 61, 0.25);
+}
+
+.color-swatch-option img,
+.color-swatch-sin-foto {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 6px;
+  object-fit: cover;
+  background: var(--bed-line);
+}
+
+.color-swatch-option span {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--ink);
+  text-align: center;
+  line-height: 1.2;
+}
 
 .order-btn {
   background: var(--filament);
@@ -897,28 +981,27 @@ img { max-width: 100%; display: block; }
   letter-spacing: 0.04em;
 }
 
-.color-select-row {
+.color-trigger {
   display: flex;
   align-items: center;
-  gap: 8px;
-}
-
-.color-select {
+  gap: 10px;
   background: var(--panel-raised);
   border: 1px solid var(--line);
   color: var(--ink);
   font-family: var(--font-mono);
-  font-size: 0.78rem;
-  padding: 7px 10px;
-  border-radius: 6px;
+  font-size: 0.82rem;
+  padding: 8px 10px;
+  border-radius: 8px;
   cursor: pointer;
-  flex: 1;
-  min-width: 0;
+  width: 100%;
+  text-align: left;
 }
 
-.color-preview {
-  width: 34px;
-  height: 34px;
+.color-trigger:hover { border-color: var(--filament); }
+
+.color-trigger-preview {
+  width: 30px;
+  height: 30px;
   border-radius: 6px;
   object-fit: cover;
   background: var(--bed-line);
@@ -927,11 +1010,12 @@ img { max-width: 100%; display: block; }
   display: none;
 }
 
-.color-preview.visible { display: block; }
+.color-trigger-preview.visible { display: block; }
 
-.color-select:focus { outline: none; border-color: var(--filament); }
+.color-trigger-label { flex: 1; }
+.color-trigger .icon { color: var(--ink-muted); }
 
-.color-select.color-select-error {
+.color-trigger.color-select-error {
   border-color: var(--danger);
   animation: colorShake 0.3s ease;
 }
@@ -1058,6 +1142,15 @@ img { max-width: 100%; display: block; }
   font-size: 0.92rem;
   line-height: 1.55;
   flex: 1;
+}
+
+.mayoreo-detalle {
+  background: rgba(255, 106, 61, 0.1);
+  border: 1px solid var(--filament-dim);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.82rem;
+  color: var(--filament);
 }
 
 .modal-footer {
