@@ -294,6 +294,7 @@ function renderNovedades() {
     <article class="novedad-card" data-sku="${escapeAttr(p.sku)}">
       <div class="novedad-photo">
         <img src="${escapeAttr(p.fotos[0])}" alt="${escapeAttr(p.nombre)}" loading="lazy" decoding="async">
+        ${p.mayoreoMinimo ? `<span class="mayoreo-badge mayoreo-badge-sm">🏷️ Mayoreo</span>` : ''}
       </div>
       <div class="novedad-info">
         <span class="novedad-name">${escapeHtml(p.nombre)}</span>
