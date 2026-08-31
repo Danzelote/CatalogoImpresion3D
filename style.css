@@ -407,6 +407,54 @@ img { max-width: 100%; display: block; }
   color: #17191c;
 }
 
+.qty-control-wrap { display: inline-flex; }
+
+.qty-stepper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--filament);
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+
+.qty-step-btn {
+  background: none;
+  border: none;
+  color: var(--filament);
+  font-family: var(--font-mono);
+  font-size: 1.05rem;
+  line-height: 1;
+  width: 22px;
+  height: 22px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.qty-step-btn:hover { color: var(--ink); }
+
+.qty-stepper-num {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 600;
+  min-width: 14px;
+  text-align: center;
+}
+
+.mayoreo-empujon-inline {
+  display: none;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--teal);
+  line-height: 1.4;
+  margin-top: 6px;
+}
+
+.mayoreo-empujon-inline.visible { display: block; }
+
 /* ---------- Empty / loading states ---------- */
 
 .state-msg {

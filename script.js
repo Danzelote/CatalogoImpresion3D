@@ -21,6 +21,31 @@ let PAGINA_ACTUAL = 1;
 let CARRITO = cargarCarrito();
 
 /* ---------------------------------------------
+   GOOGLE ANALYTICS — corre de inmediato al cargar el script, sin
+   esperar al catálogo, para medir la visita lo más rápido posible.
+--------------------------------------------- */
+function iniciarAnalytics() {
+  if (!CONFIG.GA_MEASUREMENT_ID) return;
+
+  const script = document.createElement('script');
+  script.async = true;
+  script.src = `https://www.googletagmanager.com/gtag/js?id=${CONFIG.GA_MEASUREMENT_ID}`;
+  document.head.appendChild(script);
+
+  window.dataLayer = window.dataLayer || [];
+  window.gtag = function () { dataLayer.push(arguments); };
+  gtag('js', new Date());
+  gtag('config', CONFIG.GA_MEASUREMENT_ID);
+}
+iniciarAnalytics();
+
+// Manda un evento a Analytics si está activo — no hace nada (ni truena)
+// si GA_MEASUREMENT_ID está vacío o el script de Google no ha cargado.
+function registrarEventoGA(nombre, parametros) {
+  if (typeof gtag === 'function') gtag('event', nombre, parametros);
+}
+
+/* ---------------------------------------------
    3) CARGA DE DATOS DESDE GOOGLE SHEETS
 --------------------------------------------- */
 function urlCSV(sheetName) {
@@ -371,14 +396,8 @@ function renderCatalogo() {
 
   catalogEl.innerHTML = lista.map(p => tarjetaProducto(p)).join('');
 
-  catalogEl.querySelectorAll('.add-btn').forEach(btn => {
-    btn.addEventListener('click', (ev) => {
-      ev.stopPropagation();
-      manejarClicAgregar(btn, btn.closest('.product-card'));
-    });
-  });
-
   vincularSelectColor(catalogEl);
+  actualizarControlesVisibles();
 
   catalogEl.querySelectorAll('.product-card').forEach(card => {
     card.addEventListener('click', () => abrirModal(card.dataset.sku));
@@ -492,6 +511,7 @@ function elegirColor(nombreColor) {
   }
 
   cerrarSelectorColor();
+  actualizarControlesVisibles();
 }
 
 function cerrarSelectorColor() {
@@ -500,7 +520,6 @@ function cerrarSelectorColor() {
 }
 
 function tarjetaProducto(p) {
-  const enCarrito = !p.opcionesColor && CARRITO.some(i => i.sku === p.sku);
   return `
     <article class="product-card" data-sku="${escapeAttr(p.sku)}">
       <div class="product-photos">
@@ -517,20 +536,114 @@ function tarjetaProducto(p) {
         ${p.opcionesColor ? opcionesColorHTML(p.sku) : ''}
         <div class="product-footer">
           <span class="product-price">${formatoPrecio(p.precio)}</span>
-          <button class="add-btn ${enCarrito ? 'added' : ''}" data-sku="${escapeAttr(p.sku)}">
-            ${enCarrito ? 'Agregado ✓' : `Agregar ${ICONO_CARRITO}`}
-          </button>
+          <div class="qty-control-wrap" data-sku="${escapeAttr(p.sku)}" data-solo-icono="si"></div>
         </div>
+        <div class="mayoreo-empujon-inline" data-sku="${escapeAttr(p.sku)}"></div>
       </div>
     </article>
   `;
 }
 
+/* ---------------------------------------------
+   5c) CONTROL DE CANTIDAD (Agregar / − N +)
+   Un mismo contenedor ".qty-control-wrap" vive tanto en la tarjeta del
+   catálogo como en el popup de detalle. Se auto-pinta según cuántas
+   piezas de ESE producto (y, si tiene colores, de ESE color elegido)
+   ya están en el carrito — mostrando "Agregar" si son 0, o el
+   contador −/+ si ya hay al menos 1.
+--------------------------------------------- */
+function obtenerCantidadActual(producto, colorSeleccionado) {
+  if (producto.opcionesColor) {
+    if (!colorSeleccionado) return 0; // todavía no elige color, no hay línea que contar
+    const item = CARRITO.find(i => i.sku === producto.sku && i.color === colorSeleccionado);
+    return item ? item.cantidad : 0;
+  }
+  const item = CARRITO.find(i => i.sku === producto.sku && !i.color);
+  return item ? item.cantidad : 0;
+}
+
+function pintarControlCantidad(wrap) {
+  const sku = wrap.dataset.sku;
+  const producto = PRODUCTOS.find(p => p.sku === sku);
+  if (!producto) return;
+
+  const soloIcono = wrap.dataset.soloIcono === 'si';
+  const contenedorPadre = wrap.closest('.product-card') || wrap.closest('.modal-content');
+  const colorInput = contenedorPadre ? contenedorPadre.querySelector('.color-value') : null;
+  const colorSeleccionado = colorInput ? colorInput.value : '';
+  const cantidad = obtenerCantidadActual(producto, colorSeleccionado);
+
+  if (cantidad > 0) {
+    wrap.innerHTML = `
+      <div class="qty-stepper">
+        <button type="button" class="qty-step-btn" data-accion="menos" aria-label="Quitar uno">–</button>
+        <span class="qty-stepper-num">${cantidad}</span>
+        <button type="button" class="qty-step-btn" data-accion="mas" aria-label="Agregar uno">+</button>
+      </div>
+    `;
+  } else {
+    wrap.innerHTML = `
+      <button type="button" class="add-btn">
+        ${soloIcono ? ICONO_CARRITO : `Agregar ${ICONO_CARRITO}`}
+      </button>
+    `;
+  }
+
+  const btnAgregar = wrap.querySelector('.add-btn');
+  if (btnAgregar) {
+    btnAgregar.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      manejarClicAgregar(sku, contenedorPadre);
+    });
+  }
+
+  wrap.querySelectorAll('.qty-step-btn').forEach(btn => {
+    btn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      const clave = claveCarrito(sku, colorSeleccionado);
+      cambiarCantidad(clave, btn.dataset.accion === 'mas' ? 1 : -1);
+    });
+  });
+}
+
+// Se llama después de cualquier cambio al carrito (agregar, +/-, quitar,
+// elegir color) — repinta todos los controles de cantidad y empujones
+// de mayoreo que estén visibles en ese momento (tarjetas + popup).
+function actualizarControlesVisibles() {
+  document.querySelectorAll('.qty-control-wrap').forEach(pintarControlCantidad);
+  actualizarEmpujonesMayoreo();
+}
+
+function actualizarEmpujonesMayoreo() {
+  document.querySelectorAll('.mayoreo-empujon-inline').forEach(el => {
+    const sku = el.dataset.sku;
+    const producto = PRODUCTOS.find(p => p.sku === sku);
+    if (!producto || !producto.mayoreoMinimo) {
+      el.textContent = '';
+      el.classList.remove('visible');
+      return;
+    }
+
+    const contenedorPadre = el.closest('.product-card') || el.closest('.modal-content');
+    const colorInput = contenedorPadre ? contenedorPadre.querySelector('.color-value') : null;
+    const colorSeleccionado = colorInput ? colorInput.value : '';
+    const cantidad = obtenerCantidadActual(producto, colorSeleccionado);
+
+    if (cantidad > 0 && cantidad < producto.mayoreoMinimo) {
+      const faltan = producto.mayoreoMinimo - cantidad;
+      el.textContent = `Agrega ${faltan} más y desbloqueas ${producto.mayoreoDescuento}% de descuento`;
+      el.classList.add('visible');
+    } else {
+      el.textContent = '';
+      el.classList.remove('visible');
+    }
+  });
+}
+
 // Lógica compartida del botón "Agregar", usada tanto en la tarjeta del
 // catálogo como en el modal de detalle: valida el color si el producto
 // lo requiere, antes de mandarlo al carrito.
-function manejarClicAgregar(boton, contenedor) {
-  const sku = boton.dataset.sku;
+function manejarClicAgregar(sku, contenedor) {
   const colorValue = contenedor.querySelector('.color-value');
   const color = colorValue ? colorValue.value : '';
 
@@ -544,10 +657,6 @@ function manejarClicAgregar(boton, contenedor) {
   }
 
   agregarAlCarrito(sku, color);
-
-  if (colorValue) {
-    boton.innerHTML = 'Agregado ✓';
-  }
 }
 
 function urlProducto(sku) {
@@ -580,8 +689,6 @@ function abrirModal(sku) {
   const p = PRODUCTOS.find(x => x.sku === sku);
   if (!p) return;
 
-  const enCarrito = !p.opcionesColor && CARRITO.some(i => i.sku === p.sku);
-
   const contenido = document.getElementById('modalContent');
   contenido.innerHTML = `
     <div class="modal-photos">
@@ -598,10 +705,9 @@ function abrirModal(sku) {
       ${p.opcionesColor ? opcionesColorHTML(p.sku) : ''}
       <div class="modal-footer">
         <span class="product-price">${formatoPrecio(p.precio)}</span>
-        <button class="add-btn ${enCarrito ? 'added' : ''}" id="modalAddBtn" data-sku="${escapeAttr(p.sku)}">
-          ${enCarrito ? 'Agregado ✓' : `Agregar ${ICONO_CARRITO}`}
-        </button>
+        <div class="qty-control-wrap" data-sku="${escapeAttr(p.sku)}" data-solo-icono="no"></div>
       </div>
+      <div class="mayoreo-empujon-inline" data-sku="${escapeAttr(p.sku)}"></div>
     </div>
   `;
 
@@ -642,10 +748,6 @@ function abrirModal(sku) {
     });
   }
 
-  document.getElementById('modalAddBtn').addEventListener('click', (ev) => {
-    manejarClicAgregar(ev.currentTarget, contenido);
-  });
-
   // El botón de compartir ahora vive en la barra fija (fuera de modalContent,
   // así que no se vuelve a crear cada vez) — se reasigna con onclick para
   // que siempre apunte al producto actualmente abierto, sin acumular
@@ -653,6 +755,7 @@ function abrirModal(sku) {
   document.getElementById('modalShareBtn').onclick = () => compartirProducto(p);
 
   vincularSelectColor(contenido);
+  actualizarControlesVisibles();
 
   document.getElementById('modalOverlay').classList.add('open');
 }
@@ -707,6 +810,19 @@ function agregarAlCarrito(sku, color = '') {
   guardarCarrito();
   renderCarrito();
   avisarCarrito();
+  actualizarControlesVisibles();
+
+  registrarEventoGA('add_to_cart', {
+    currency: CONFIG.MONEDA,
+    value: producto.precio,
+    items: [{
+      item_id: producto.sku,
+      item_name: producto.nombre,
+      item_variant: color || undefined,
+      price: producto.precio,
+      quantity: 1,
+    }],
+  });
 }
 
 function cambiarCantidad(clave, delta) {
@@ -718,14 +834,14 @@ function cambiarCantidad(clave, delta) {
   }
   guardarCarrito();
   renderCarrito();
-  renderCatalogo();
+  actualizarControlesVisibles();
 }
 
 function quitarDelCarrito(clave) {
   CARRITO = CARRITO.filter(i => claveCarrito(i.sku, i.color) !== clave);
   guardarCarrito();
   renderCarrito();
-  renderCatalogo();
+  actualizarControlesVisibles();
 }
 
 // Si el producto de este renglón del carrito tiene descuento por mayoreo
@@ -875,6 +991,19 @@ async function ordenar() {
     const data = await llamarAppsScript(query);
 
     if (!data.ok) throw new Error(data.error || 'Error al registrar el pedido');
+
+    registrarEventoGA('purchase', {
+      transaction_id: data.orderId,
+      currency: CONFIG.MONEDA,
+      value: total,
+      items: items.map(i => ({
+        item_id: i.sku,
+        item_name: i.nombre,
+        item_variant: i.color || undefined,
+        price: i.precio,
+        quantity: i.cantidad,
+      })),
+    });
 
     CARRITO = [];
     guardarCarrito();
