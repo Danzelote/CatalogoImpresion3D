@@ -1109,6 +1109,12 @@ img { max-width: 100%; display: block; }
   padding: 24px;
 }
 
+/* El selector de color se puede abrir DESDE ADENTRO del popup de
+   detalle de producto — necesita quedar por encima de ese otro popup,
+   no detrás (por default, con el mismo z-index, ganaba el que está
+   más abajo en el HTML, que era el del producto). */
+#colorPickerOverlay { z-index: 50; }
+
 .modal-overlay.open { opacity: 1; pointer-events: auto; }
 
 .modal-box {
