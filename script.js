@@ -629,9 +629,12 @@ function actualizarEmpujonesMayoreo() {
     const colorSeleccionado = colorInput ? colorInput.value : '';
     const cantidad = obtenerCantidadActual(producto, colorSeleccionado);
 
-    if (cantidad > 0 && cantidad < producto.mayoreoMinimo) {
-      const faltan = producto.mayoreoMinimo - cantidad;
-      el.textContent = `Agrega ${faltan} más y desbloqueas ${producto.mayoreoDescuento}% de descuento`;
+    const tanda = producto.mayoreoMinimo;
+    const resto = cantidad % tanda;
+
+    if (cantidad > 0 && resto > 0) {
+      const faltan = tanda - resto;
+      el.textContent = `Agrega ${faltan} más para completar un juego de ${tanda} con ${producto.mayoreoDescuento}% de descuento`;
       el.classList.add('visible');
     } else {
       el.textContent = '';
@@ -701,7 +704,7 @@ function abrirModal(sku) {
       ${p.cantidadPorPieza ? `<div class="product-quantity">Piezas por pedido: ${escapeHtml(p.cantidadPorPieza)}</div>` : ''}
       ${p.categorias.length ? `<div class="product-tags">${p.categorias.map(c => `<span class="product-tag">${escapeHtml(etiquetaCategoria(c))}</span>`).join('')}</div>` : ''}
       <p class="modal-desc">${escapeHtml(p.descripcion) || 'Sin descripción.'}</p>
-      ${p.mayoreoMinimo ? `<div class="mayoreo-detalle">🏷️ Compra ${p.mayoreoMinimo} piezas o más y obtén ${p.mayoreoDescuento}% de descuento</div>` : ''}
+      ${p.mayoreoMinimo ? `<div class="mayoreo-detalle">🏷️ Descuento por mayoreo: cada juego de ${p.mayoreoMinimo} piezas tiene ${p.mayoreoDescuento}% de descuento. Ej: comprando ${p.mayoreoMinimo + 1}, ${p.mayoreoMinimo} llevan descuento y 1 va a precio normal.</div>` : ''}
       ${p.opcionesColor ? opcionesColorHTML(p.sku) : ''}
       <div class="modal-footer">
         <span class="product-price">${formatoPrecio(p.precio)}</span>
@@ -844,16 +847,26 @@ function quitarDelCarrito(clave) {
   actualizarControlesVisibles();
 }
 
-// Si el producto de este renglón del carrito tiene descuento por mayoreo
-// y ya se alcanzó el mínimo (con esa cantidad exacta de ESE color, los
-// colores no se suman entre sí), regresa el precio ya con descuento.
-// Si no aplica, regresa el precio normal sin tocar.
-function calcularPrecioUnitario(item) {
+// Calcula el total de este renglón del carrito aplicando el descuento
+// por "tandas completas" (no es todo-o-nada por mínimo): el descuento
+// se aplica en juegos completos del tamaño que quepa en una cama de
+// impresión, y las piezas sueltas que sobren de un juego incompleto
+// van a precio normal. Los colores no se suman entre sí para esto —
+// cada color es su propia tanda física.
+//
+// Ejemplo con tandas de 5: comprar 6 → 5 con descuento + 1 a precio
+// normal. Comprar 10 → las 10 con descuento (2 juegos completos).
+function calcularTotalLinea(item) {
   const producto = PRODUCTOS.find(p => p.sku === item.sku);
-  if (producto && producto.mayoreoMinimo && item.cantidad >= producto.mayoreoMinimo) {
-    return item.precio * (1 - producto.mayoreoDescuento / 100);
+  if (producto && producto.mayoreoMinimo && producto.mayoreoDescuento) {
+    const tanda = producto.mayoreoMinimo;
+    const juegosCompletos = Math.floor(item.cantidad / tanda);
+    const piezasConDescuento = juegosCompletos * tanda;
+    const piezasNormales = item.cantidad - piezasConDescuento;
+    const precioConDescuento = item.precio * (1 - producto.mayoreoDescuento / 100);
+    return piezasConDescuento * precioConDescuento + piezasNormales * item.precio;
   }
-  return item.precio;
+  return item.precio * item.cantidad;
 }
 
 function renderCarrito() {
@@ -870,19 +883,22 @@ function renderCarrito() {
     itemsEl.innerHTML = CARRITO.map(i => {
       const clave = claveCarrito(i.sku, i.color);
       const producto = PRODUCTOS.find(p => p.sku === i.sku);
-      const precioUnitario = calcularPrecioUnitario(i);
-      const conDescuento = precioUnitario < i.precio;
+      const totalLinea = calcularTotalLinea(i);
+      const totalSinDescuento = i.precio * i.cantidad;
+      const conDescuento = totalLinea < totalSinDescuento;
 
-      let precioHTML = formatoPrecio(precioUnitario * i.cantidad);
+      let precioHTML = formatoPrecio(totalLinea);
       if (conDescuento) {
-        precioHTML = `<span class="precio-tachado">${formatoPrecio(i.precio * i.cantidad)}</span> ${formatoPrecio(precioUnitario * i.cantidad)}`;
+        precioHTML = `<span class="precio-tachado">${formatoPrecio(totalSinDescuento)}</span> ${formatoPrecio(totalLinea)}`;
       }
 
       let empujonHTML = '';
-      if (producto && producto.mayoreoMinimo && !conDescuento) {
-        const faltan = producto.mayoreoMinimo - i.cantidad;
-        if (faltan > 0) {
-          empujonHTML = `<div class="mayoreo-empujon">Agrega ${faltan} más y desbloqueas ${producto.mayoreoDescuento}% de descuento</div>`;
+      if (producto && producto.mayoreoMinimo) {
+        const tanda = producto.mayoreoMinimo;
+        const resto = i.cantidad % tanda;
+        if (resto > 0) {
+          const faltan = tanda - resto;
+          empujonHTML = `<div class="mayoreo-empujon">Agrega ${faltan} más para completar un juego de ${tanda} con ${producto.mayoreoDescuento}% de descuento</div>`;
         }
       }
 
@@ -913,7 +929,7 @@ function renderCarrito() {
     });
   }
 
-  const total = CARRITO.reduce((a, i) => a + calcularPrecioUnitario(i) * i.cantidad, 0);
+  const total = CARRITO.reduce((a, i) => a + calcularTotalLinea(i), 0);
   totalEl.textContent = formatoPrecio(total);
 }
 
@@ -981,7 +997,7 @@ async function ordenar() {
   orderBtn.disabled = true;
   orderBtn.textContent = 'Generando pedido…';
 
-  const total = CARRITO.reduce((a, i) => a + calcularPrecioUnitario(i) * i.cantidad, 0);
+  const total = CARRITO.reduce((a, i) => a + calcularTotalLinea(i), 0);
   const items = [...CARRITO];
   const nombreCliente = document.getElementById('nombreClienteInput').value.trim();
 
