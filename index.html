@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>San Pedro 3D</title>
-<meta name="description" content="Catálogo de piezas impresas en 3D — listas para recoger en CDMX.">
+<title>San Pedro 3D — Impresión 3D en San Pedro de los Pinos, CDMX</title>
+<meta name="description" content="Impresión 3D en San Pedro de los Pinos, Ciudad de México. Piezas personalizadas, figuras, accesorios y más — listas para recoger, coordinamos por WhatsApp.">
 
 <!--
   ÍCONO Y VISTA PREVIA AL COMPARTIR EL LINK
@@ -17,7 +17,7 @@
 <link rel="apple-touch-icon" href="https://sanpedro3d.shop/logo.png">
 <meta property="og:title" content="San Pedro 3D">
 <meta property="og:url" content="https://sanpedro3d.shop/">
-<meta property="og:description" content="Catálogo de piezas impresas en 3D — listas para recoger en CDMX.">
+<meta property="og:description" content="Impresión 3D en San Pedro de los Pinos, Ciudad de México. Piezas personalizadas, figuras, accesorios y más — listas para recoger, coordinamos por WhatsApp.">
 <meta property="og:image" content="https://sanpedro3d.shop/logo.png">
 <meta property="og:type" content="website">
 
@@ -35,6 +35,29 @@
 <link rel="preconnect" href="https://lh3.googleusercontent.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
+
+<!--
+  DATOS ESTRUCTURADOS (para SEO local, ayuda a Google a entender qué
+  tipo de negocio eres y dónde das servicio, más allá de solo leer el
+  texto de la página). Reemplaza TU_TELEFONO_AQUI con tu número de
+  WhatsApp en formato +52..., por ejemplo "+525512345678".
+-->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "LocalBusiness",
+  "name": "San Pedro 3D",
+  "image": "https://sanpedro3d.shop/logo.png",
+  "url": "https://sanpedro3d.shop/",
+  "telephone": "+525531605449",
+  "description": "Impresión 3D en San Pedro de los Pinos, Ciudad de México. Piezas personalizadas, figuras, accesorios y más — listas para recoger, coordinamos por WhatsApp.",
+  "areaServed": {
+    "@type": "Place",
+    "name": "San Pedro de los Pinos, Ciudad de México"
+  },
+  "priceRange": "$$"
+}
+</script>
 </head>
 <body>
 
@@ -78,6 +101,143 @@
   <div class="novedades-wrap">
     <button class="carousel-btn" id="novPrev" aria-label="Anterior">‹</button>
     <div class="novedades-track" id="novedadesTrack"></div>
+    <button class="carousel-btn" id="novNext" aria-label="Siguiente">›</button>
+  </div>
+</section>
+
+<div class="toolbar">
+  <div class="category-filters">
+    <h2 class="section-title">Categorías</h2>
+    <nav class="category-bar" id="categoryBar">
+      <!-- las categorías se generan solas desde el Google Sheet -->
+    </nav>
+    <nav class="subcategory-bar" id="subcategoryBar"></nav>
+  </div>
+  <div class="sort-control">
+    <label for="sortSelect">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+      Filtrar
+    </label>
+    <select id="sortSelect">
+      <option value="populares">Más pedidos</option>
+      <option value="nuevo">Más nuevo primero</option>
+      <option value="precio-asc">Precio: menor a mayor</option>
+      <option value="precio-desc">Precio: mayor a menor</option>
+      <option value="categoria">Categoría (A-Z)</option>
+      <option value="relevancia">Orden del Sheet</option>
+    </select>
+  </div>
+</div>
+
+<main class="catalog" id="catalog">
+  <div class="state-msg">
+    Cargando catálogo…
+    <div class="bar"></div>
+  </div>
+</main>
+
+<div class="pagination" id="pagination"></div>
+
+<footer class="site-footer">
+  Creado por <a href="https://github.com/Danzelote" target="_blank" rel="noopener">@Danzelote</a>
+</footer>
+
+<!-- Botón flotante de contacto por WhatsApp -->
+<a href="#" id="whatsappFloat" class="whatsapp-float" target="_blank" rel="noopener" aria-label="Contactar por WhatsApp">
+  <svg viewBox="0 0 24 24" fill="currentColor" width="26" height="26"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.148-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"></path><path d="M12 2C6.477 2 2 6.477 2 12c0 1.98.578 3.826 1.578 5.383L2 22l4.735-1.545A9.953 9.953 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18a7.95 7.95 0 0 1-4.32-1.267l-.31-.19-3.19 1.04 1.045-3.11-.203-.32A7.95 7.95 0 0 1 4 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8z"></path></svg>
+</a>
+
+<!-- Consultar status de pedido (popup) -->
+<div class="modal-overlay" id="statusOverlay">
+  <div class="confirm-box">
+    <button class="modal-close modal-close-static" id="statusClose">&times;</button>
+    <h2>¿Ya hiciste un pedido?</h2>
+    <p class="section-hint">Escribe tu número de orden y consulta en qué fase se encuentra.</p>
+    <form class="status-form" id="statusForm">
+      <input type="text" id="statusInput" placeholder="Ej. 000123" inputmode="numeric" autocomplete="off">
+      <button type="submit" id="statusBtn">Consultar</button>
+    </form>
+    <div class="status-result" id="statusResult"></div>
+  </div>
+</div>
+
+<!-- Suscripción a novedades (popup de entrada) -->
+<div class="modal-overlay" id="newsletterOverlay">
+  <div class="confirm-box">
+    <button class="modal-close modal-close-static" id="newsletterClose">&times;</button>
+    <h2>No te pierdas de las novedades</h2>
+    <p class="section-hint">Te avisamos por correo cuando agreguemos piezas nuevas al catálogo.</p>
+    <form class="status-form" id="newsletterForm">
+      <input type="email" id="newsletterPopupEmail" placeholder="tu@correo.com" autocomplete="email">
+      <button type="submit" id="newsletterPopupBtn">Suscribirme</button>
+    </form>
+    <button type="button" class="newsletter-ahora-no" id="newsletterAhoraNo">Ahora no</button>
+    <div class="status-result" id="newsletterPopupResult"></div>
+  </div>
+</div>
+
+<!-- Selector visual de color (fotos, no texto — un <select> normal no
+     puede mostrar imágenes en iPhone) -->
+<div class="modal-overlay" id="colorPickerOverlay">
+  <div class="confirm-box color-picker-box">
+    <button class="modal-close modal-close-static" id="colorPickerClose">&times;</button>
+    <h2>Elige un color</h2>
+    <div class="color-picker-grid" id="colorPickerGrid"></div>
+  </div>
+</div>
+
+<!-- Confirmación antes de abrir WhatsApp -->
+<div class="modal-overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <div class="confirm-icon">✓</div>
+    <h2>Pedido registrado</h2>
+    <p id="confirmText"></p>
+    <p class="confirm-warning">Al continuar se abrirá WhatsApp con el mensaje ya escrito. Por favor no lo borres ni lo modifiques, solo dale <strong>enviar</strong>.</p>
+    <button class="order-btn" id="confirmWhatsappBtn">Abrir WhatsApp y enviar</button>
+  </div>
+</div>
+
+<!-- Modal de detalle de producto -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-box">
+    <div class="modal-sticky-bar">
+      <button class="modal-share-static" id="modalShareBtn" aria-label="Compartir">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+      </button>
+      <button class="modal-close" id="modalClose">&times;</button>
+    </div>
+    <div class="modal-content" id="modalContent"></div>
+  </div>
+</div>
+
+<!-- Carrito -->
+<div class="cart-overlay" id="cartOverlay"></div>
+<aside class="cart-drawer" id="cartDrawer">
+  <div class="cart-header">
+    <h2>Tu pedido</h2>
+    <button class="cart-close" id="cartClose">&times;</button>
+  </div>
+  <div class="cart-items" id="cartItems">
+    <div class="cart-empty">Aún no agregas productos.</div>
+  </div>
+  <div class="cart-footer">
+    <div class="cart-total">
+      <span>Total</span>
+      <span id="cartTotal">$0</span>
+    </div>
+    <div class="nombre-cliente-wrap">
+      <input type="text" id="nombreClienteInput" placeholder="Tu nombre (opcional)" autocomplete="name">
+    </div>
+    <button class="order-btn" id="orderBtn">Ordenar por WhatsApp</button>
+    <div class="order-hint">Se abrirá WhatsApp con tu pedido ya redactado.</div>
+  </div>
+</aside>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js" defer></script>
+<script src="config.js" defer></script>
+<script src="script.js" defer></script>
+</body>
+</html>    <div class="novedades-track" id="novedadesTrack"></div>
     <button class="carousel-btn" id="novNext" aria-label="Siguiente">›</button>
   </div>
 </section>
