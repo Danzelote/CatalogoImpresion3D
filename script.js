@@ -110,6 +110,41 @@ async function cargarColores() {
   }
 }
 
+// Trae la pestaña "Subproductos" (las versiones dentro de cada producto,
+// ej. "Juego base" vs "Expansión") y las agrupa por SKU — igual que
+// Colores, un producto sin ninguna fila aquí simplemente no tiene versiones.
+let SUBPRODUCTOS_POR_SKU = {};
+async function cargarSubproductos() {
+  try {
+    const csvText = await obtenerCSV(CONFIG.SHEET_SUBPRODUCTOS, 'subproductos');
+    const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
+
+    const agrupados = {};
+    parsed.data.forEach(row => {
+      const sku = (row['SKU del producto'] || '').trim();
+      const nombre = (row['Nombre de la versión'] || '').trim();
+      const disponible = (row['Disponible'] || '').toString().trim().toLowerCase() === 'si';
+      if (!sku || !nombre || !disponible) return;
+
+      if (!agrupados[sku]) agrupados[sku] = [];
+      agrupados[sku].push({
+        nombre,
+        precio: parseFloat((row['Precio'] || '0').toString().replace(/[^0-9.]/g, '')) || 0,
+        foto1: resolverFoto((row['Foto1'] || '').trim()),
+        foto2: resolverFoto((row['Foto2'] || '').trim()),
+        principal: (row['Es principal'] || '').toString().trim().toLowerCase() === 'si',
+      });
+    });
+
+    SUBPRODUCTOS_POR_SKU = agrupados;
+  } catch (err) {
+    // No es fatal — un producto con "Tiene subproductos" pero sin filas
+    // cargadas simplemente se muestra sin selector, como si no las tuviera.
+    console.error(err);
+    SUBPRODUCTOS_POR_SKU = {};
+  }
+}
+
 // Trae, desde la pestaña "Pedidos", cuántas piezas se han pedido de cada
 // SKU en total — se usa para ordenar el catálogo por "más pedidos". Se
 // pide aparte y no bloquea la primera pintada del catálogo (ver iniciar());
@@ -136,10 +171,30 @@ async function cargarProductos() {
 
   PRODUCTOS = parsed.data
     .map(normalizarProducto)
-    // Se oculta si falta el nombre, si Activo no dice explícitamente "si",
-    // o si el precio está vacío/ inválido (evita mostrar productos en $0).
-    .filter(p => p.nombre && p.activo && !isNaN(p.precio))
+    // Se oculta si falta el nombre, si Activo no dice explícitamente "si".
+    // El precio se exige SOLO si el producto no tiene subproductos — si
+    // los tiene, el precio de arriba no se usa para nada (cada versión
+    // trae el suyo), así que un campo Precio vacío ahí es normal, no un
+    // error que deba ocultar el producto.
+    .filter(p => p.nombre && p.activo && (p.tieneSubproductos || !isNaN(p.precio)))
     .map((p, i) => ({ ...p, _orden: i }));
+}
+
+// Pega las versiones de la pestaña Subproductos a cada producto que las
+// tenga marcadas. Se llama desde iniciar() DESPUÉS de que tanto
+// cargarProductos() como cargarSubproductos() ya terminaron los dos —
+// corren en paralelo, así que no se puede hacer este pegado dentro de
+// cualquiera de las dos por separado sin arriesgar una carrera.
+function pegarSubproductosAProductos() {
+  PRODUCTOS.forEach(p => {
+    if (p.tieneSubproductos) {
+      p.subproductos = SUBPRODUCTOS_POR_SKU[p.sku] || [];
+      // Un producto con "Tiene subproductos" pero sin ninguna versión
+      // cargada (ej. todavía no le subes ninguna) se trata como si no
+      // tuviera — mejor mostrarlo simple que roto.
+      if (!p.subproductos.length) p.tieneSubproductos = false;
+    }
+  });
 }
 
 function mostrarErrorCatalogo() {
@@ -190,6 +245,12 @@ function normalizarProducto(row) {
     cantidadPorPieza: (row['Piezas por pedido'] || '').toString().trim(),
     mayoreoMinimo: tieneMayoreo ? mayoreoMinimo : null,
     mayoreoDescuento: tieneMayoreo ? mayoreoDescuento : null,
+    // Tiene subproductos: cuando es "si", el precio y las fotos de arriba
+    // dejan de usarse — cada versión (en la pestaña Subproductos) trae
+    // los suyos propios. Se rellena más abajo, en iniciar(), una vez que
+    // también cargó esa pestaña.
+    tieneSubproductos: (row['Tiene subproductos'] || '').toString().trim().toLowerCase() === 'si',
+    subproductos: [],
   };
 }
 
@@ -519,12 +580,101 @@ function cerrarSelectorColor() {
   COLOR_PICKER_TRIGGER = null;
 }
 
+/* ---------------------------------------------
+   SELECTOR DE VERSIÓN (subproductos) — mismo patrón visual que el de
+   color, pero cada opción también muestra su propio precio, y elegir
+   una cambia la(s) foto(s) grandes del producto, no solo una miniatura.
+--------------------------------------------- */
+function opcionesSubproductoHTML(p) {
+  return `
+    <div class="color-select-wrap">
+      <label>Versión</label>
+      <button type="button" class="subproducto-trigger color-trigger" data-sku="${escapeAttr(p.sku)}">
+        <img class="color-trigger-preview" alt="" decoding="async">
+        <span class="color-trigger-label">Elige una versión</span>
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+      </button>
+      <input type="hidden" class="subproducto-value" data-sku="${escapeAttr(p.sku)}" value="">
+    </div>
+  `;
+}
+
+function vincularSelectSubproducto(contenedor) {
+  contenedor.querySelectorAll('.subproducto-trigger').forEach(trigger => {
+    trigger.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      abrirSelectorSubproducto(trigger);
+    });
+  });
+}
+
+let SUBPRODUCTO_PICKER_TRIGGER = null;
+
+function abrirSelectorSubproducto(trigger) {
+  SUBPRODUCTO_PICKER_TRIGGER = trigger;
+  const sku = trigger.dataset.sku;
+  const producto = PRODUCTOS.find(p => p.sku === sku);
+  if (!producto) return;
+
+  const wrap = trigger.closest('.color-select-wrap');
+  const valorActual = wrap.querySelector('.subproducto-value').value;
+
+  const grid = document.getElementById('subproductoPickerGrid');
+  grid.innerHTML = producto.subproductos.map(sp => `
+    <button type="button" class="color-swatch-option ${sp.nombre === valorActual ? 'selected' : ''}" data-subproducto="${escapeAttr(sp.nombre)}">
+      ${sp.foto1 ? `<img src="${escapeAttr(sp.foto1)}" alt="${escapeAttr(sp.nombre)}" decoding="async">` : '<div class="color-swatch-sin-foto"></div>'}
+      <span>${escapeHtml(sp.nombre)}</span>
+      <span class="subproducto-swatch-precio">${formatoPrecio(sp.precio)}</span>
+    </button>
+  `).join('');
+
+  grid.querySelectorAll('.color-swatch-option').forEach(btn => {
+    btn.addEventListener('click', () => elegirSubproducto(btn.dataset.subproducto));
+  });
+
+  document.getElementById('subproductoPickerOverlay').classList.add('open');
+}
+
+function elegirSubproducto(nombreVersion) {
+  if (!SUBPRODUCTO_PICKER_TRIGGER) return;
+  const wrap = SUBPRODUCTO_PICKER_TRIGGER.closest('.color-select-wrap');
+  const sku = SUBPRODUCTO_PICKER_TRIGGER.dataset.sku;
+  const producto = PRODUCTOS.find(p => p.sku === sku);
+  const sp = producto ? producto.subproductos.find(s => s.nombre === nombreVersion) : null;
+
+  wrap.querySelector('.subproducto-value').value = nombreVersion;
+  wrap.querySelector('.color-trigger-label').textContent = sp ? `${sp.nombre} · ${formatoPrecio(sp.precio)}` : nombreVersion;
+
+  const previewImg = wrap.querySelector('.color-trigger-preview');
+  if (sp && sp.foto1) {
+    previewImg.src = sp.foto1;
+    previewImg.classList.add('visible');
+  } else {
+    previewImg.classList.remove('visible');
+    previewImg.removeAttribute('src');
+  }
+
+  const contenedorPadre = wrap.closest('.product-card') || wrap.closest('.modal-content');
+  if (contenedorPadre && producto) {
+    actualizarFotosProducto(contenedorPadre, producto, nombreVersion);
+    actualizarPrecioMostrado(contenedorPadre, producto, nombreVersion);
+  }
+
+  cerrarSelectorSubproducto();
+  actualizarControlesVisibles();
+}
+
+function cerrarSelectorSubproducto() {
+  document.getElementById('subproductoPickerOverlay').classList.remove('open');
+  SUBPRODUCTO_PICKER_TRIGGER = null;
+}
+
 function tarjetaProducto(p) {
+  const fotos = fotosAMostrar(p, null);
   return `
     <article class="product-card" data-sku="${escapeAttr(p.sku)}">
       <div class="product-photos">
-        ${p.fotos.map((f, i) => `<img src="${escapeAttr(f)}" alt="${escapeAttr(p.nombre)}" class="${i === 0 ? 'active' : ''}" loading="lazy" decoding="async">`).join('')}
-        ${p.fotos.length > 1 ? `<div class="photo-dots">${p.fotos.map((_, i) => `<span class="${i === 0 ? 'active' : ''}"></span>`).join('')}</div>` : ''}
+        ${fotosBloqueHTML(fotos, p.nombre)}
         ${p.mayoreoMinimo ? `<span class="mayoreo-badge">🏷️ Descuento por mayoreo</span>` : ''}
       </div>
       <div class="product-body">
@@ -533,9 +683,9 @@ function tarjetaProducto(p) {
         ${p.cantidadPorPieza ? `<div class="product-quantity">Piezas por pedido: ${escapeHtml(p.cantidadPorPieza)}</div>` : ''}
         ${p.descripcion ? `<div class="product-desc">${escapeHtml(p.descripcion)}</div>${p.descripcion.length > 140 ? '<span class="desc-more">Leer más</span>' : ''}` : ''}
         ${p.categorias.length ? `<div class="product-tags">${p.categorias.map(c => `<span class="product-tag">${escapeHtml(etiquetaCategoria(c))}</span>`).join('')}</div>` : ''}
-        ${p.opcionesColor ? opcionesColorHTML(p.sku) : ''}
+        ${p.tieneSubproductos ? opcionesSubproductoHTML(p) : (p.opcionesColor ? opcionesColorHTML(p.sku) : '')}
         <div class="product-footer">
-          <span class="product-price">${formatoPrecio(p.precio)}</span>
+          <span class="product-price">${precioMostrado(p)}</span>
           <div class="qty-control-wrap" data-sku="${escapeAttr(p.sku)}" data-solo-icono="si"></div>
         </div>
         <div class="mayoreo-empujon-inline" data-sku="${escapeAttr(p.sku)}"></div>
@@ -552,7 +702,12 @@ function tarjetaProducto(p) {
    ya están en el carrito — mostrando "Agregar" si son 0, o el
    contador −/+ si ya hay al menos 1.
 --------------------------------------------- */
-function obtenerCantidadActual(producto, colorSeleccionado) {
+function obtenerCantidadActual(producto, colorSeleccionado, subproductoSeleccionado) {
+  if (producto.tieneSubproductos) {
+    if (!subproductoSeleccionado) return 0; // todavía no elige versión, no hay línea que contar
+    const item = CARRITO.find(i => i.sku === producto.sku && i.subproducto === subproductoSeleccionado);
+    return item ? item.cantidad : 0;
+  }
   if (producto.opcionesColor) {
     if (!colorSeleccionado) return 0; // todavía no elige color, no hay línea que contar
     const item = CARRITO.find(i => i.sku === producto.sku && i.color === colorSeleccionado);
@@ -571,7 +726,9 @@ function pintarControlCantidad(wrap) {
   const contenedorPadre = wrap.closest('.product-card') || wrap.closest('.modal-content');
   const colorInput = contenedorPadre ? contenedorPadre.querySelector('.color-value') : null;
   const colorSeleccionado = colorInput ? colorInput.value : '';
-  const cantidad = obtenerCantidadActual(producto, colorSeleccionado);
+  const subproductoInput = contenedorPadre ? contenedorPadre.querySelector('.subproducto-value') : null;
+  const subproductoSeleccionado = subproductoInput ? subproductoInput.value : '';
+  const cantidad = obtenerCantidadActual(producto, colorSeleccionado, subproductoSeleccionado);
 
   if (cantidad > 0) {
     wrap.innerHTML = `
@@ -600,7 +757,7 @@ function pintarControlCantidad(wrap) {
   wrap.querySelectorAll('.qty-step-btn').forEach(btn => {
     btn.addEventListener('click', (ev) => {
       ev.stopPropagation();
-      const clave = claveCarrito(sku, colorSeleccionado);
+      const clave = claveCarrito(sku, colorSeleccionado, subproductoSeleccionado);
       cambiarCantidad(clave, btn.dataset.accion === 'mas' ? 1 : -1);
     });
   });
@@ -627,7 +784,9 @@ function actualizarEmpujonesMayoreo() {
     const contenedorPadre = el.closest('.product-card') || el.closest('.modal-content');
     const colorInput = contenedorPadre ? contenedorPadre.querySelector('.color-value') : null;
     const colorSeleccionado = colorInput ? colorInput.value : '';
-    const cantidad = obtenerCantidadActual(producto, colorSeleccionado);
+    const subproductoInput = contenedorPadre ? contenedorPadre.querySelector('.subproducto-value') : null;
+    const subproductoSeleccionado = subproductoInput ? subproductoInput.value : '';
+    const cantidad = obtenerCantidadActual(producto, colorSeleccionado, subproductoSeleccionado);
 
     const tanda = producto.mayoreoMinimo;
     const resto = cantidad % tanda;
@@ -659,7 +818,19 @@ function manejarClicAgregar(sku, contenedor) {
     return;
   }
 
-  agregarAlCarrito(sku, color);
+  const subproductoValue = contenedor.querySelector('.subproducto-value');
+  const subproducto = subproductoValue ? subproductoValue.value : '';
+
+  if (subproductoValue && !subproducto) {
+    const trigger = contenedor.querySelector('.subproducto-trigger');
+    if (trigger) {
+      trigger.classList.add('color-select-error');
+      setTimeout(() => trigger.classList.remove('color-select-error'), 1200);
+    }
+    return;
+  }
+
+  agregarAlCarrito(sku, color, subproducto);
 }
 
 function urlProducto(sku) {
@@ -688,35 +859,36 @@ async function compartirProducto(p) {
 /* ---------------------------------------------
    5b) MODAL DE DETALLE (vista más grande)
 --------------------------------------------- */
-function abrirModal(sku) {
-  const p = PRODUCTOS.find(x => x.sku === sku);
-  if (!p) return;
+function fotosAMostrar(p, subproductoSeleccionado) {
+  if (p.tieneSubproductos && p.subproductos.length) {
+    const sp = p.subproductos.find(s => s.nombre === subproductoSeleccionado)
+      || p.subproductos.find(s => s.principal)
+      || p.subproductos[0];
+    const fotos = [sp.foto1, sp.foto2].filter(Boolean);
+    return fotos.length ? fotos : p.fotos;
+  }
+  return p.fotos;
+}
 
-  const contenido = document.getElementById('modalContent');
-  contenido.innerHTML = `
-    <div class="modal-photos">
-      ${p.fotos.map((f, i) => `<img src="${escapeAttr(f)}" alt="${escapeAttr(p.nombre)}" class="${i === 0 ? 'active' : ''}" decoding="async">`).join('')}
-      ${p.fotos.length > 1 ? `<div class="photo-dots">${p.fotos.map((_, i) => `<span class="${i === 0 ? 'active' : ''}"></span>`).join('')}</div>` : ''}
-    </div>
-    <div class="modal-info">
-      <h2>${escapeHtml(p.nombre)}</h2>
-      <div class="product-sku">SKU ${escapeHtml(p.sku)}</div>
-      ${p.cantidadPorPieza ? `<div class="product-quantity">Piezas por pedido: ${escapeHtml(p.cantidadPorPieza)}</div>` : ''}
-      ${p.categorias.length ? `<div class="product-tags">${p.categorias.map(c => `<span class="product-tag">${escapeHtml(etiquetaCategoria(c))}</span>`).join('')}</div>` : ''}
-      <p class="modal-desc">${escapeHtml(p.descripcion) || 'Sin descripción.'}</p>
-      ${p.mayoreoMinimo ? `<div class="mayoreo-detalle">🏷️ Descuento por mayoreo: cada juego de ${p.mayoreoMinimo} piezas tiene ${p.mayoreoDescuento}% de descuento. Ej: comprando ${p.mayoreoMinimo + 1}, ${p.mayoreoMinimo} llevan descuento y 1 va a precio normal.</div>` : ''}
-      ${p.opcionesColor ? opcionesColorHTML(p.sku) : ''}
-      <div class="modal-footer">
-        <span class="product-price">${formatoPrecio(p.precio)}</span>
-        <div class="qty-control-wrap" data-sku="${escapeAttr(p.sku)}" data-solo-icono="no"></div>
-      </div>
-      <div class="mayoreo-empujon-inline" data-sku="${escapeAttr(p.sku)}"></div>
-    </div>
-  `;
+function fotosBloqueHTML(fotos, nombreAlt) {
+  return fotos.map((f, i) => `<img src="${escapeAttr(f)}" alt="${escapeAttr(nombreAlt)}" class="${i === 0 ? 'active' : ''}" loading="lazy" decoding="async">`).join('') +
+    (fotos.length > 1 ? `<div class="photo-dots">${fotos.map((_, i) => `<span class="${i === 0 ? 'active' : ''}"></span>`).join('')}</div>` : '');
+}
 
-  history.replaceState(null, '', urlProducto(p.sku));
+// Precio a mostrar antes de elegir versión: el normal si el producto no
+// tiene subproductos, o "Desde $X" (el más barato de las versiones) si sí.
+function precioMostrado(p) {
+  if (p.tieneSubproductos && p.subproductos.length) {
+    const minimo = Math.min(...p.subproductos.map(s => s.precio));
+    return 'Desde ' + formatoPrecio(minimo);
+  }
+  return formatoPrecio(p.precio);
+}
 
-  const fotosEl = contenido.querySelector('.modal-photos');
+// Conecta el clic-para-avanzar y el deslizar con el dedo en el carrusel
+// de fotos del modal grande. Se llama al abrir el modal Y cada vez que
+// se repintan las fotos (ej. al elegir una versión distinta).
+function vincularFotosModal(fotosEl) {
   const imgs = fotosEl.querySelectorAll('img');
   const dots = fotosEl.querySelectorAll('.photo-dots span');
   let idx = 0;
@@ -750,6 +922,59 @@ function abrirModal(sku) {
       mostrarFoto(deltaX < 0 ? idx + 1 : idx - 1);
     });
   }
+}
+
+// Repinta el bloque de fotos (tarjeta o modal) para reflejar la versión
+// elegida — cada subproducto puede traer sus propias fotos distintas.
+function actualizarFotosProducto(contenedor, producto, subproductoSeleccionado) {
+  const esModal = contenedor.classList.contains('modal-content');
+  const bloque = contenedor.querySelector(esModal ? '.modal-photos' : '.product-photos');
+  if (!bloque) return;
+
+  const badge = bloque.querySelector('.mayoreo-badge');
+  const fotos = fotosAMostrar(producto, subproductoSeleccionado);
+  bloque.innerHTML = fotosBloqueHTML(fotos, producto.nombre) + (badge ? badge.outerHTML : '');
+
+  if (esModal) vincularFotosModal(bloque);
+}
+
+function actualizarPrecioMostrado(contenedor, producto, subproductoSeleccionado) {
+  const precioEl = contenedor.querySelector('.product-price');
+  if (!precioEl) return;
+  const sp = producto.subproductos.find(s => s.nombre === subproductoSeleccionado);
+  precioEl.textContent = sp ? formatoPrecio(sp.precio) : precioMostrado(producto);
+}
+
+function abrirModal(sku) {
+  const p = PRODUCTOS.find(x => x.sku === sku);
+  if (!p) return;
+
+  const fotosIniciales = fotosAMostrar(p, null);
+
+  const contenido = document.getElementById('modalContent');
+  contenido.innerHTML = `
+    <div class="modal-photos">
+      ${fotosBloqueHTML(fotosIniciales, p.nombre)}
+    </div>
+    <div class="modal-info">
+      <h2>${escapeHtml(p.nombre)}</h2>
+      <div class="product-sku">SKU ${escapeHtml(p.sku)}</div>
+      ${p.cantidadPorPieza ? `<div class="product-quantity">Piezas por pedido: ${escapeHtml(p.cantidadPorPieza)}</div>` : ''}
+      ${p.categorias.length ? `<div class="product-tags">${p.categorias.map(c => `<span class="product-tag">${escapeHtml(etiquetaCategoria(c))}</span>`).join('')}</div>` : ''}
+      <p class="modal-desc">${escapeHtml(p.descripcion) || 'Sin descripción.'}</p>
+      ${p.mayoreoMinimo ? `<div class="mayoreo-detalle">🏷️ Descuento por mayoreo: cada juego de ${p.mayoreoMinimo} piezas tiene ${p.mayoreoDescuento}% de descuento. Ej: comprando ${p.mayoreoMinimo + 1}, ${p.mayoreoMinimo} llevan descuento y 1 va a precio normal.</div>` : ''}
+      ${p.tieneSubproductos ? opcionesSubproductoHTML(p) : (p.opcionesColor ? opcionesColorHTML(p.sku) : '')}
+      <div class="modal-footer">
+        <span class="product-price">${precioMostrado(p)}</span>
+        <div class="qty-control-wrap" data-sku="${escapeAttr(p.sku)}" data-solo-icono="no"></div>
+      </div>
+      <div class="mayoreo-empujon-inline" data-sku="${escapeAttr(p.sku)}"></div>
+    </div>
+  `;
+
+  history.replaceState(null, '', urlProducto(p.sku));
+
+  vincularFotosModal(contenido.querySelector('.modal-photos'));
 
   // El botón de compartir ahora vive en la barra fija (fuera de modalContent,
   // así que no se vuelve a crear cada vez) — se reasigna con onclick para
@@ -758,6 +983,7 @@ function abrirModal(sku) {
   document.getElementById('modalShareBtn').onclick = () => compartirProducto(p);
 
   vincularSelectColor(contenido);
+  vincularSelectSubproducto(contenido);
   actualizarControlesVisibles();
 
   document.getElementById('modalOverlay').classList.add('open');
@@ -776,8 +1002,11 @@ function cerrarModal() {
    así un mismo producto puede estar en el carrito en varios colores
    a la vez, cada uno como renglón independiente.
 --------------------------------------------- */
-function claveCarrito(sku, color) {
-  return color ? `${sku}::${color}` : sku;
+function claveCarrito(sku, color, subproducto) {
+  let clave = sku;
+  if (color) clave += `::${color}`;
+  if (subproducto) clave += `##${subproducto}`;
+  return clave;
 }
 
 function cargarCarrito() {
@@ -792,21 +1021,30 @@ function guardarCarrito() {
   localStorage.setItem('catalogo3d_carrito', JSON.stringify(CARRITO));
 }
 
-function agregarAlCarrito(sku, color = '') {
+function agregarAlCarrito(sku, color = '', subproducto = '') {
   const producto = PRODUCTOS.find(p => p.sku === sku);
   if (!producto) return;
 
-  const clave = claveCarrito(sku, color);
-  const item = CARRITO.find(i => claveCarrito(i.sku, i.color) === clave);
+  // Si el producto tiene versiones, el precio y la foto de esta línea
+  // vienen de la versión elegida, no del producto en general.
+  const sp = producto.tieneSubproductos
+    ? producto.subproductos.find(s => s.nombre === subproducto)
+    : null;
+  const precioLinea = sp ? sp.precio : producto.precio;
+  const fotoLinea = (sp && sp.foto1) ? sp.foto1 : producto.fotos[0];
+
+  const clave = claveCarrito(sku, color, subproducto);
+  const item = CARRITO.find(i => claveCarrito(i.sku, i.color, i.subproducto) === clave);
   if (item) {
     item.cantidad += 1;
   } else {
     CARRITO.push({
       sku: producto.sku,
       nombre: producto.nombre,
-      precio: producto.precio,
-      foto: producto.fotos[0],
+      precio: precioLinea,
+      foto: fotoLinea,
       color: color || '',
+      subproducto: subproducto || '',
       cantidad: 1,
     });
   }
@@ -817,23 +1055,23 @@ function agregarAlCarrito(sku, color = '') {
 
   registrarEventoGA('add_to_cart', {
     currency: CONFIG.MONEDA,
-    value: producto.precio,
+    value: precioLinea,
     items: [{
       item_id: producto.sku,
       item_name: producto.nombre,
-      item_variant: color || undefined,
-      price: producto.precio,
+      item_variant: [color, subproducto].filter(Boolean).join(' / ') || undefined,
+      price: precioLinea,
       quantity: 1,
     }],
   });
 }
 
 function cambiarCantidad(clave, delta) {
-  const item = CARRITO.find(i => claveCarrito(i.sku, i.color) === clave);
+  const item = CARRITO.find(i => claveCarrito(i.sku, i.color, i.subproducto) === clave);
   if (!item) return;
   item.cantidad += delta;
   if (item.cantidad <= 0) {
-    CARRITO = CARRITO.filter(i => claveCarrito(i.sku, i.color) !== clave);
+    CARRITO = CARRITO.filter(i => claveCarrito(i.sku, i.color, i.subproducto) !== clave);
   }
   guardarCarrito();
   renderCarrito();
@@ -841,7 +1079,7 @@ function cambiarCantidad(clave, delta) {
 }
 
 function quitarDelCarrito(clave) {
-  CARRITO = CARRITO.filter(i => claveCarrito(i.sku, i.color) !== clave);
+  CARRITO = CARRITO.filter(i => claveCarrito(i.sku, i.color, i.subproducto) !== clave);
   guardarCarrito();
   renderCarrito();
   actualizarControlesVisibles();
@@ -881,7 +1119,7 @@ function renderCarrito() {
     itemsEl.innerHTML = `<div class="cart-empty">Aún no agregas productos.</div>`;
   } else {
     itemsEl.innerHTML = CARRITO.map(i => {
-      const clave = claveCarrito(i.sku, i.color);
+      const clave = claveCarrito(i.sku, i.color, i.subproducto);
       const producto = PRODUCTOS.find(p => p.sku === i.sku);
       const totalLinea = calcularTotalLinea(i);
       const totalSinDescuento = i.precio * i.cantidad;
@@ -902,14 +1140,20 @@ function renderCarrito() {
         }
       }
 
+      const detalleLinea = [
+        i.subproducto ? 'Versión: ' + i.subproducto : '',
+        i.color ? 'Color: ' + i.color : '',
+      ].filter(Boolean).join(' · ');
+
       return `
       <div class="cart-item">
         <img src="${escapeAttr(i.foto)}" alt="${escapeAttr(i.nombre)}" decoding="async">
         <div class="cart-item-info">
           <div class="cart-item-name">${escapeHtml(i.nombre)}</div>
-          <div class="cart-item-sku">SKU ${escapeHtml(i.sku)}${i.color ? ' · Color: ' + escapeHtml(i.color) : ''}</div>
+          <div class="cart-item-sku">SKU ${escapeHtml(i.sku)}${detalleLinea ? ' · ' + escapeHtml(detalleLinea) : ''}</div>
           <div class="cart-item-controls">
             <button class="qty-btn" data-clave="${escapeAttr(clave)}" data-delta="-1">–</button>
+
             <span>${i.cantidad}</span>
             <button class="qty-btn" data-clave="${escapeAttr(clave)}" data-delta="1">+</button>
             <button class="cart-remove" data-clave="${escapeAttr(clave)}">quitar</button>
@@ -1058,8 +1302,9 @@ function cerrarConfirmacion() {
 
 function abrirWhatsApp(orderId, total, items, nombreCliente) {
   const listado = items.map(i => {
+    const subproductoTxt = i.subproducto ? ` - Versión: ${i.subproducto}` : '';
     const colorTxt = i.color ? ` - Color: ${i.color}` : '';
-    return `- ${i.nombre}${colorTxt} (SKU: ${i.sku}) x${i.cantidad}`;
+    return `- ${i.nombre}${subproductoTxt}${colorTxt} (SKU: ${i.sku}) x${i.cantidad}`;
   }).join('\n');
 
   const saludo = nombreCliente
@@ -1340,6 +1585,11 @@ document.getElementById('colorPickerOverlay').addEventListener('click', (ev) => 
   if (ev.target.id === 'colorPickerOverlay') cerrarSelectorColor();
 });
 
+document.getElementById('subproductoPickerClose').addEventListener('click', cerrarSelectorSubproducto);
+document.getElementById('subproductoPickerOverlay').addEventListener('click', (ev) => {
+  if (ev.target.id === 'subproductoPickerOverlay') cerrarSelectorSubproducto();
+});
+
 document.getElementById('newsletterForm').addEventListener('submit', async (ev) => {
   ev.preventDefault();
   const input = document.getElementById('newsletterPopupEmail');
@@ -1378,7 +1628,8 @@ async function iniciar() {
     // Colores y productos se piden al mismo tiempo de verdad, y se espera
     // a ambos antes de pintar — así el catálogo aparece en cuanto la más
     // lenta de las dos responda, no la suma de las dos.
-    await Promise.all([cargarColores(), cargarProductos()]);
+    await Promise.all([cargarColores(), cargarSubproductos(), cargarProductos()]);
+    pegarSubproductosAProductos();
     renderCategorias();
     renderNovedades();
     renderCatalogo();

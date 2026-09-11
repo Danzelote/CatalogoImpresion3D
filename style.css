@@ -741,6 +741,11 @@ img { max-width: 100%; display: block; }
   line-height: 1.2;
 }
 
+.subproducto-swatch-precio {
+  color: var(--filament) !important;
+  font-weight: 600;
+}
+
 .order-btn {
   background: var(--filament);
   color: #17191c;
@@ -1114,6 +1119,7 @@ img { max-width: 100%; display: block; }
    no detrás (por default, con el mismo z-index, ganaba el que está
    más abajo en el HTML, que era el del producto). */
 #colorPickerOverlay { z-index: 50; }
+#subproductoPickerOverlay { z-index: 50; }
 
 .modal-overlay.open { opacity: 1; pointer-events: auto; }
 
