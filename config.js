@@ -8,7 +8,7 @@
 
 const CONFIG = {
   // ID del Google Sheet (está en la URL: .../d/ESTE_ID/edit)
-  SHEET_ID: 'TU_SHEET_ID_AQUI',
+  SHEET_ID: '1wyY5BBbm5ZJBYXs93H21l_2tRvCrYmWrbX_RLUrZjzs',
 
   // Nombres exactos de las pestañas
   SHEET_PRODUCTOS: 'Productos',
@@ -20,7 +20,7 @@ const CONFIG = {
 
   // Número de WhatsApp donde llegan los pedidos y las dudas de contacto,
   // con código de país, solo dígitos (ej. México: 52 + 10 dígitos)
-  WHATSAPP_NUMBER: '5215512345678',
+  WHATSAPP_NUMBER: '525531605449',
 
   // Mensaje predeterminado del botón flotante de contacto (dudas generales,
   // no pedidos — esos usan su propio mensaje con número de orden)
@@ -42,7 +42,7 @@ const CONFIG = {
 
   // URL de la imagen de tu logotipo (Drive o cualquier URL completa).
   // Si la dejas vacía, solo se muestra el texto "Catálogo 3D".
-  LOGO_URL: '',
+  LOGO_URL: 'https://sanpedro3d.shop/logo.png',
 
   // ID de medición de Google Analytics 4 (formato G-XXXXXXXXXX).
   // Si lo dejas vacío, no se activa ningún rastreo.
@@ -51,7 +51,7 @@ const CONFIG = {
   // URL de una imagen de banner horizontal para el encabezado (Drive o
   // cualquier URL completa). Si la llenas, se muestra esa imagen en vez
   // del texto de abajo. Si la dejas vacía, se sigue viendo el texto.
-  BANNER_URL: '',
+  BANNER_URL: 'https://sanpedro3d.shop/banner.png',
 
   // Textos del encabezado — edítalos las veces que quieras sin tocar HTML.
   DESCRIPCION_SITIO: 'Piezas impresas en 3D, listas para recoger — no vendemos archivos STL.',
