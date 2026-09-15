@@ -50,7 +50,12 @@ img { max-width: 100%; display: block; }
 .site-header {
   position: sticky;
   top: 0;
-  z-index: 20;
+  /* El z-index más alto de todo el sitio a propósito: así el encabezado
+     (con el carrito y su animación al agregar algo) se queda siempre
+     visible y clickeable encima de cualquier popup abierto — el de
+     producto, el selector de color/versión, o cualquier otro — en vez
+     de quedar tapado por la capa oscura de fondo. */
+  z-index: 55;
   background: rgba(23, 25, 28, 0.92);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--line);
