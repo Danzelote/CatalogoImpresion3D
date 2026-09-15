@@ -232,10 +232,38 @@
     <div class="cart-empty">Aún no agregas productos.</div>
   </div>
   <div class="cart-footer">
+    <div class="entrega-select-wrap">
+      <label class="field-label-carrito">Entrega</label>
+      <select id="entregaSelect">
+        <option value="recoleccion">Recoger en punto (solo CDMX)</option>
+        <option value="envio" id="opcionEnvio">Envío nacional</option>
+      </select>
+    </div>
+
+    <div class="direccion-envio-wrap" id="direccionEnvioWrap" style="display:none;">
+      <p class="section-hint" id="envioInfoHint"></p>
+      <input type="text" id="envioNombre" placeholder="Nombre de quien recibe" autocomplete="name">
+      <input type="text" id="envioCalle" placeholder="Calle y número exterior" autocomplete="address-line1">
+      <input type="text" id="envioInterior" placeholder="Número interior (opcional)" autocomplete="address-line2">
+      <input type="text" id="envioColonia" placeholder="Colonia">
+      <input type="text" id="envioMunicipio" placeholder="Delegación o municipio">
+      <input type="text" id="envioEstado" placeholder="Estado">
+      <input type="text" id="envioCP" placeholder="Código postal" inputmode="numeric" autocomplete="postal-code">
+    </div>
+
     <div class="cart-total">
+      <span>Subtotal</span>
+      <span id="cartSubtotal">$0</span>
+    </div>
+    <div class="cart-total" id="cartEnvioRow" style="display:none;">
+      <span>Envío</span>
+      <span id="cartEnvioCosto">$0</span>
+    </div>
+    <div class="cart-total cart-total-final">
       <span>Total</span>
       <span id="cartTotal">$0</span>
     </div>
+
     <div class="nombre-cliente-wrap">
       <input type="text" id="nombreClienteInput" placeholder="Tu nombre (opcional)" autocomplete="name">
     </div>

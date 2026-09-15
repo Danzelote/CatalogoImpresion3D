@@ -1173,8 +1173,13 @@ function renderCarrito() {
     });
   }
 
-  const total = CARRITO.reduce((a, i) => a + calcularTotalLinea(i), 0);
-  totalEl.textContent = formatoPrecio(total);
+  const subtotal = CARRITO.reduce((a, i) => a + calcularTotalLinea(i), 0);
+  const esEnvio = document.getElementById('entregaSelect').value === 'envio';
+  const costoEnvio = esEnvio ? CONFIG.ENVIO_COSTO : 0;
+
+  document.getElementById('cartSubtotal').textContent = formatoPrecio(subtotal);
+  document.getElementById('cartEnvioCosto').textContent = formatoPrecio(costoEnvio);
+  totalEl.textContent = formatoPrecio(subtotal + costoEnvio);
 }
 
 function abrirCarrito() {
@@ -1237,16 +1242,51 @@ function llamarAppsScript(query) {
 async function ordenar() {
   if (!CARRITO.length) return;
 
+  const tipoEntrega = document.getElementById('entregaSelect').value;
+  let datosEnvio = null;
+
+  if (tipoEntrega === 'envio') {
+    const mapaCampos = {
+      nombre: 'envioNombre', calle: 'envioCalle', interior: 'envioInterior',
+      colonia: 'envioColonia', municipio: 'envioMunicipio', estado: 'envioEstado', cp: 'envioCP',
+    };
+    const campos = {};
+    Object.keys(mapaCampos).forEach(clave => {
+      campos[clave] = document.getElementById(mapaCampos[clave]).value.trim();
+    });
+
+    const requeridos = ['nombre', 'calle', 'colonia', 'municipio', 'estado', 'cp'];
+    const faltante = requeridos.find(clave => !campos[clave]);
+    if (faltante) {
+      const el = document.getElementById(mapaCampos[faltante]);
+      el.focus();
+      el.classList.add('campo-error');
+      setTimeout(() => el.classList.remove('campo-error'), 1500);
+      return;
+    }
+
+    datosEnvio = campos;
+  }
+
   const orderBtn = document.getElementById('orderBtn');
   orderBtn.disabled = true;
   orderBtn.textContent = 'Generando pedido…';
 
-  const total = CARRITO.reduce((a, i) => a + calcularTotalLinea(i), 0);
+  const subtotal = CARRITO.reduce((a, i) => a + calcularTotalLinea(i), 0);
+  const costoEnvio = tipoEntrega === 'envio' ? CONFIG.ENVIO_COSTO : 0;
+  const total = subtotal + costoEnvio;
   const items = [...CARRITO];
   const nombreCliente = document.getElementById('nombreClienteInput').value.trim();
 
   try {
-    const payload = { items, total, nombre: nombreCliente };
+    const payload = {
+      items,
+      total,
+      nombre: nombreCliente,
+      entrega: tipoEntrega,
+      costoEnvio,
+      envio: datosEnvio,
+    };
     const query = `data=${encodeURIComponent(JSON.stringify(payload))}`;
     const data = await llamarAppsScript(query);
 
@@ -1256,6 +1296,7 @@ async function ordenar() {
       transaction_id: data.orderId,
       currency: CONFIG.MONEDA,
       value: total,
+      shipping: costoEnvio,
       items: items.map(i => ({
         item_id: i.sku,
         item_name: i.nombre,
@@ -1273,7 +1314,7 @@ async function ordenar() {
 
     document.getElementById('nombreClienteInput').value = '';
 
-    mostrarConfirmacion(data.orderId, total, items, nombreCliente);
+    mostrarConfirmacion(data.orderId, total, items, nombreCliente, tipoEntrega, datosEnvio, costoEnvio);
   } catch (err) {
     console.error(err);
     alert('No se pudo generar el número de orden automáticamente. Revisa la URL de Apps Script en script.js. Tu pedido no se perdió, sigue en el carrito.');
@@ -1283,13 +1324,13 @@ async function ordenar() {
   }
 }
 
-function mostrarConfirmacion(orderId, total, items, nombreCliente) {
+function mostrarConfirmacion(orderId, total, items, nombreCliente, tipoEntrega, datosEnvio, costoEnvio) {
   document.getElementById('confirmText').textContent =
     `Tu pedido quedó guardado con el número de orden ${orderId}.`;
 
   const btn = document.getElementById('confirmWhatsappBtn');
   btn.onclick = () => {
-    abrirWhatsApp(orderId, total, items, nombreCliente);
+    abrirWhatsApp(orderId, total, items, nombreCliente, tipoEntrega, datosEnvio, costoEnvio);
     cerrarConfirmacion();
   };
 
@@ -1300,7 +1341,7 @@ function cerrarConfirmacion() {
   document.getElementById('confirmOverlay').classList.remove('open');
 }
 
-function abrirWhatsApp(orderId, total, items, nombreCliente) {
+function abrirWhatsApp(orderId, total, items, nombreCliente, tipoEntrega, datosEnvio, costoEnvio) {
   const listado = items.map(i => {
     const subproductoTxt = i.subproducto ? ` - Versión: ${i.subproducto}` : '';
     const colorTxt = i.color ? ` - Color: ${i.color}` : '';
@@ -1311,9 +1352,24 @@ function abrirWhatsApp(orderId, total, items, nombreCliente) {
     ? `Hola, soy ${nombreCliente} y acabo de hacer un pedido con el número de orden (${orderId})`
     : `¡Hola! Acabo de hacer un pedido con el número de orden (${orderId})`;
 
+  let bloqueEntrega;
+  if (tipoEntrega === 'envio' && datosEnvio) {
+    const interiorTxt = datosEnvio.interior ? ` Int. ${datosEnvio.interior}` : '';
+    bloqueEntrega =
+      `Envío nacional (${formatoPrecio(costoEnvio)}) a:\n` +
+      `${datosEnvio.nombre}\n` +
+      `${datosEnvio.calle}${interiorTxt}\n` +
+      `Col. ${datosEnvio.colonia}\n` +
+      `${datosEnvio.municipio}, ${datosEnvio.estado}\n` +
+      `CP ${datosEnvio.cp}`;
+  } else {
+    bloqueEntrega = 'Recojo en punto de encuentro (CDMX)';
+  }
+
   const mensaje =
     `${saludo}\n\n` +
     `${listado}\n\n` +
+    `${bloqueEntrega}\n\n` +
     `Total: ${formatoPrecio(total)}`;
 
   const url = `https://wa.me/${CONFIG.WHATSAPP_NUMBER}?text=${encodeURIComponent(mensaje)}`;
@@ -1468,6 +1524,20 @@ function iniciarEncabezado() {
 document.getElementById('cartToggle').addEventListener('click', abrirCarrito);
 document.getElementById('cartClose').addEventListener('click', cerrarCarrito);
 document.getElementById('cartOverlay').addEventListener('click', cerrarCarrito);
+
+// Completa los textos de envío con los valores de config.js (no se
+// pueden meter directo en el HTML estático, ese archivo no ejecuta JS).
+document.getElementById('opcionEnvio').textContent = `Envío nacional (+${formatoPrecio(CONFIG.ENVIO_COSTO)})`;
+document.getElementById('envioInfoHint').textContent =
+  `${CONFIG.ENVIO_PAQUETERIA} — ${CONFIG.ENVIO_TIEMPO}.`;
+
+document.getElementById('entregaSelect').addEventListener('change', (ev) => {
+  const esEnvio = ev.target.value === 'envio';
+  document.getElementById('direccionEnvioWrap').style.display = esEnvio ? 'flex' : 'none';
+  document.getElementById('cartEnvioRow').style.display = esEnvio ? 'flex' : 'none';
+  renderCarrito();
+});
+
 document.getElementById('orderBtn').addEventListener('click', ordenar);
 document.getElementById('modalClose').addEventListener('click', cerrarModal);
 document.getElementById('modalOverlay').addEventListener('click', (ev) => {
