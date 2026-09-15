@@ -13,6 +13,7 @@ const CONFIG = {
   // Nombres exactos de las pestañas
   SHEET_PRODUCTOS: 'Productos',
   SHEET_COLORES: 'Colores',
+  SHEET_SUBPRODUCTOS: 'Subproductos',
 
   // URL del Apps Script publicado como Web App (ver README)
   APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbyx2v7w4F13VmmqHiU8GIDr1yto5ZwmPSiIOWoTPbVYBnz4Buxxvgses-23y-EzuZI/exec',
