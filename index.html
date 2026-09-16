@@ -243,31 +243,35 @@
     <div class="direccion-envio-wrap" id="direccionEnvioWrap" style="display:none;">
       <p class="section-hint" id="envioInfoHint"></p>
       <input type="text" id="envioNombre" placeholder="Nombre de quien recibe" autocomplete="name">
-      <input type="tel" id="envioTelefono" placeholder="Teléfono (para avisos de la paquetería)" autocomplete="tel" inputmode="tel">
-
-      <div class="direccion-fila-2col">
-        <div>
-          <select id="envioEstado">
-            <option value="">Estado</option>
-          </select>
-        </div>
-        <div>
-          <input type="text" id="envioCP" placeholder="Código postal" inputmode="numeric" autocomplete="postal-code" maxlength="5">
-        </div>
-      </div>
-
-      <input type="text" id="envioMunicipio" placeholder="Delegación o municipio">
-
-      <input type="text" id="envioColonia" placeholder="Colonia" list="listaColoniasCP">
-      <datalist id="listaColoniasCP"></datalist>
 
       <div class="direccion-fila-2col direccion-fila-calle">
         <div>
           <input type="text" id="envioCalle" placeholder="Calle y número exterior" autocomplete="address-line1">
         </div>
         <div>
-          <input type="text" id="envioInterior" placeholder="Interior" autocomplete="address-line2">
+          <input type="text" id="envioInterior" placeholder="Interior (opcional)" autocomplete="address-line2">
         </div>
+      </div>
+
+      <input type="text" id="envioCP" placeholder="Código postal" inputmode="numeric" autocomplete="postal-code" maxlength="5">
+      <button type="button" class="validar-cp-btn" id="validarCPBtn">Validar código postal</button>
+
+      <div class="direccion-detalle-wrap" id="direccionDetalleWrap" style="display:none;">
+        <div class="direccion-fila-2col">
+          <div>
+            <select id="envioEstado">
+              <option value="">Estado</option>
+            </select>
+          </div>
+          <div>
+            <input type="text" id="envioMunicipio" placeholder="Delegación o municipio">
+          </div>
+        </div>
+
+        <input type="text" id="envioColonia" placeholder="Colonia" list="listaColoniasCP">
+        <datalist id="listaColoniasCP"></datalist>
+
+        <input type="tel" id="envioTelefono" placeholder="Teléfono (opcional, para avisos de la paquetería)" autocomplete="tel" inputmode="tel">
       </div>
     </div>
 
