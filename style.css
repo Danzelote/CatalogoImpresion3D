@@ -705,7 +705,8 @@ img { max-width: 100%; display: block; }
   gap: 8px;
 }
 
-.direccion-envio-wrap input {
+.direccion-envio-wrap input,
+.direccion-envio-wrap select {
   width: 100%;
   background: var(--panel-raised);
   border: 1px solid var(--line);
@@ -716,11 +717,27 @@ img { max-width: 100%; display: block; }
   border-radius: 6px;
 }
 
-.direccion-envio-wrap input:focus { outline: none; border-color: var(--filament); }
+.direccion-envio-wrap input:focus,
+.direccion-envio-wrap select:focus { outline: none; border-color: var(--filament); }
 
-.direccion-envio-wrap input.campo-error {
+.direccion-envio-wrap input.campo-error,
+.direccion-envio-wrap select.campo-error {
   border-color: var(--danger);
   animation: colorShake 0.3s ease;
+}
+
+.direccion-envio-wrap input.campo-autollenado {
+  border-color: var(--teal);
+}
+
+.direccion-fila-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.direccion-fila-2col.direccion-fila-calle {
+  grid-template-columns: 2fr 1fr;
 }
 
 .nombre-cliente-wrap {

@@ -1183,6 +1183,14 @@ function renderCarrito() {
 }
 
 function abrirCarrito() {
+  // Si hay algún producto (u otro popup) abierto, se cierra primero —
+  // más limpio que apilar el carrito encima de otra ventana ya abierta.
+  cerrarModal();
+  cerrarSelectorColor();
+  cerrarSelectorSubproducto();
+  document.getElementById('statusOverlay').classList.remove('open');
+  document.getElementById('newsletterOverlay').classList.remove('open');
+
   document.getElementById('cartDrawer').classList.add('open');
   document.getElementById('cartOverlay').classList.add('open');
 }
@@ -1247,7 +1255,7 @@ async function ordenar() {
 
   if (tipoEntrega === 'envio') {
     const mapaCampos = {
-      nombre: 'envioNombre', calle: 'envioCalle', interior: 'envioInterior',
+      nombre: 'envioNombre', telefono: 'envioTelefono', calle: 'envioCalle', interior: 'envioInterior',
       colonia: 'envioColonia', municipio: 'envioMunicipio', estado: 'envioEstado', cp: 'envioCP',
     };
     const campos = {};
@@ -1255,6 +1263,8 @@ async function ordenar() {
       campos[clave] = document.getElementById(mapaCampos[clave]).value.trim();
     });
 
+    // El teléfono es opcional (así lo confirmó Correos de México) — el
+    // resto sí hace falta para que el paquete llegue bien.
     const requeridos = ['nombre', 'calle', 'colonia', 'municipio', 'estado', 'cp'];
     const faltante = requeridos.find(clave => !campos[clave]);
     if (faltante) {
@@ -1355,13 +1365,14 @@ function abrirWhatsApp(orderId, total, items, nombreCliente, tipoEntrega, datosE
   let bloqueEntrega;
   if (tipoEntrega === 'envio' && datosEnvio) {
     const interiorTxt = datosEnvio.interior ? ` Int. ${datosEnvio.interior}` : '';
+    const telefonoTxt = datosEnvio.telefono ? `\nTel. ${datosEnvio.telefono}` : '';
     bloqueEntrega =
       `Envío nacional (${formatoPrecio(costoEnvio)}) a:\n` +
       `${datosEnvio.nombre}\n` +
       `${datosEnvio.calle}${interiorTxt}\n` +
       `Col. ${datosEnvio.colonia}\n` +
       `${datosEnvio.municipio}, ${datosEnvio.estado}\n` +
-      `CP ${datosEnvio.cp}`;
+      `CP ${datosEnvio.cp}${telefonoTxt}`;
   } else {
     bloqueEntrega = 'Recojo en punto de encuentro (CDMX)';
   }
@@ -1536,6 +1547,83 @@ document.getElementById('entregaSelect').addEventListener('change', (ev) => {
   document.getElementById('direccionEnvioWrap').style.display = esEnvio ? 'flex' : 'none';
   document.getElementById('cartEnvioRow').style.display = esEnvio ? 'flex' : 'none';
   renderCarrito();
+});
+
+/* ---------------------------------------------
+   ESTADOS Y AUTOLLENADO POR CÓDIGO POSTAL
+--------------------------------------------- */
+const ESTADOS_MX = [
+  'Aguascalientes', 'Baja California', 'Baja California Sur', 'Campeche',
+  'Chiapas', 'Chihuahua', 'Ciudad de México', 'Coahuila', 'Colima',
+  'Durango', 'Estado de México', 'Guanajuato', 'Guerrero', 'Hidalgo',
+  'Jalisco', 'Michoacán', 'Morelos', 'Nayarit', 'Nuevo León', 'Oaxaca',
+  'Puebla', 'Querétaro', 'Quintana Roo', 'San Luis Potosí', 'Sinaloa',
+  'Sonora', 'Tabasco', 'Tamaulipas', 'Tlaxcala', 'Veracruz', 'Yucatán',
+  'Zacatecas',
+];
+
+(function poblarEstados() {
+  const select = document.getElementById('envioEstado');
+  ESTADOS_MX.forEach(estado => {
+    const opt = document.createElement('option');
+    opt.value = estado;
+    opt.textContent = estado;
+    select.appendChild(opt);
+  });
+})();
+
+// Normaliza para comparar sin importar acentos/mayúsculas — así "CDMX",
+// "Ciudad de Mexico" o "CIUDAD DE MÉXICO" (como a veces regresan estas
+// APIs) igual encuentran la opción correcta en la lista.
+function normalizarTexto(txt) {
+  return (txt || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+}
+
+function marcarAutollenado(el) {
+  el.classList.add('campo-autollenado');
+  setTimeout(() => el.classList.remove('campo-autollenado'), 2000);
+}
+
+let CP_TIMEOUT = null;
+document.getElementById('envioCP').addEventListener('input', (ev) => {
+  const cp = ev.target.value.replace(/\D/g, '').slice(0, 5);
+  ev.target.value = cp;
+
+  clearTimeout(CP_TIMEOUT);
+  if (cp.length !== 5) return;
+
+  // Pequeña pausa antes de consultar, por si sigue escribiendo/corrigiendo.
+  CP_TIMEOUT = setTimeout(async () => {
+    try {
+      const data = await llamarAppsScript(`accion=cp&codigo=${cp}`);
+      if (!data.ok) return; // CP no encontrado o autocompletado no configurado — no pasa nada, se llena a mano
+
+      const selectEstado = document.getElementById('envioEstado');
+      const opcion = Array.from(selectEstado.options).find(o => normalizarTexto(o.value) === normalizarTexto(data.estado));
+      if (opcion) {
+        selectEstado.value = opcion.value;
+        marcarAutollenado(selectEstado);
+      }
+
+      const municipioInput = document.getElementById('envioMunicipio');
+      if (data.municipio) {
+        municipioInput.value = data.municipio;
+        marcarAutollenado(municipioInput);
+      }
+
+      const listaColonias = document.getElementById('listaColoniasCP');
+      listaColonias.innerHTML = (data.colonias || []).map(c => `<option value="${escapeAttr(c)}">`).join('');
+      // Si solo hay una colonia posible para ese CP, se llena sola —
+      // si hay varias, se deja que elijan de las sugerencias.
+      const coloniaInput = document.getElementById('envioColonia');
+      if (!coloniaInput.value && data.colonias && data.colonias.length === 1) {
+        coloniaInput.value = data.colonias[0];
+        marcarAutollenado(coloniaInput);
+      }
+    } catch (err) {
+      console.error(err); // silencioso para el cliente, no bloquea el formulario
+    }
+  }, 500);
 });
 
 document.getElementById('orderBtn').addEventListener('click', ordenar);
