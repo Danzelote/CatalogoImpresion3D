@@ -736,6 +736,28 @@ img { max-width: 100%; display: block; }
   gap: 8px;
 }
 
+.validar-cp-btn {
+  width: 100%;
+  background: var(--panel-raised);
+  border: 1px solid var(--filament-dim);
+  color: var(--filament);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 9px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.validar-cp-btn:hover { background: var(--filament); color: #17191c; }
+.validar-cp-btn:disabled { opacity: 0.6; cursor: wait; }
+
+.direccion-detalle-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .direccion-fila-2col.direccion-fila-calle {
   grid-template-columns: 2fr 1fr;
 }

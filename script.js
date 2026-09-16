@@ -1268,6 +1268,9 @@ async function ordenar() {
     const requeridos = ['nombre', 'calle', 'colonia', 'municipio', 'estado', 'cp'];
     const faltante = requeridos.find(clave => !campos[clave]);
     if (faltante) {
+      // Si nunca le dieron clic a "Validar código postal", estos campos
+      // siguen ocultos — hay que revelarlos antes de poder marcarlos.
+      document.getElementById('direccionDetalleWrap').style.display = 'flex';
       const el = document.getElementById(mapaCampos[faltante]);
       el.focus();
       el.classList.add('campo-error');
@@ -1584,20 +1587,29 @@ function marcarAutollenado(el) {
   setTimeout(() => el.classList.remove('campo-autollenado'), 2000);
 }
 
-let CP_TIMEOUT = null;
 document.getElementById('envioCP').addEventListener('input', (ev) => {
-  const cp = ev.target.value.replace(/\D/g, '').slice(0, 5);
-  ev.target.value = cp;
+  ev.target.value = ev.target.value.replace(/\D/g, '').slice(0, 5);
+});
 
-  clearTimeout(CP_TIMEOUT);
-  if (cp.length !== 5) return;
+document.getElementById('validarCPBtn').addEventListener('click', async () => {
+  const cp = document.getElementById('envioCP').value.trim();
+  const boton = document.getElementById('validarCPBtn');
+  const detalleWrap = document.getElementById('direccionDetalleWrap');
 
-  // Pequeña pausa antes de consultar, por si sigue escribiendo/corrigiendo.
-  CP_TIMEOUT = setTimeout(async () => {
-    try {
-      const data = await llamarAppsScript(`accion=cp&codigo=${cp}`);
-      if (!data.ok) return; // CP no encontrado o autocompletado no configurado — no pasa nada, se llena a mano
+  if (cp.length !== 5) {
+    const cpInput = document.getElementById('envioCP');
+    cpInput.focus();
+    cpInput.classList.add('campo-error');
+    setTimeout(() => cpInput.classList.remove('campo-error'), 1500);
+    return;
+  }
 
+  boton.disabled = true;
+  boton.textContent = 'Validando…';
+
+  try {
+    const data = await llamarAppsScript(`accion=cp&codigo=${cp}`);
+    if (data.ok) {
       const selectEstado = document.getElementById('envioEstado');
       const opcion = Array.from(selectEstado.options).find(o => normalizarTexto(o.value) === normalizarTexto(data.estado));
       if (opcion) {
@@ -1613,17 +1625,22 @@ document.getElementById('envioCP').addEventListener('input', (ev) => {
 
       const listaColonias = document.getElementById('listaColoniasCP');
       listaColonias.innerHTML = (data.colonias || []).map(c => `<option value="${escapeAttr(c)}">`).join('');
-      // Si solo hay una colonia posible para ese CP, se llena sola —
-      // si hay varias, se deja que elijan de las sugerencias.
       const coloniaInput = document.getElementById('envioColonia');
       if (!coloniaInput.value && data.colonias && data.colonias.length === 1) {
         coloniaInput.value = data.colonias[0];
         marcarAutollenado(coloniaInput);
       }
-    } catch (err) {
-      console.error(err); // silencioso para el cliente, no bloquea el formulario
     }
-  }, 500);
+    // Si el código postal no se encontró o el servicio falló, se revela
+    // el resto de todos modos — el cliente los llena a mano, nunca se
+    // queda trabado sin poder continuar su pedido.
+  } catch (err) {
+    console.error(err);
+  } finally {
+    detalleWrap.style.display = 'flex';
+    boton.disabled = false;
+    boton.textContent = 'Validar código postal';
+  }
 });
 
 document.getElementById('orderBtn').addEventListener('click', ordenar);
