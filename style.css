@@ -762,12 +762,15 @@ img { max-width: 100%; display: block; }
   grid-template-columns: 2fr 1fr;
 }
 
-.nombre-cliente-wrap {
+.datos-contacto-wrap {
   padding: 10px 0;
   border-top: 1px dashed var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.nombre-cliente-wrap input {
+.datos-contacto-wrap input {
   width: 100%;
   background: var(--panel-raised);
   border: 1px solid var(--line);
@@ -778,7 +781,12 @@ img { max-width: 100%; display: block; }
   border-radius: 6px;
 }
 
-.nombre-cliente-wrap input:focus { outline: none; border-color: var(--filament); }
+.datos-contacto-wrap input:focus { outline: none; border-color: var(--filament); }
+
+.datos-contacto-wrap input.campo-error {
+  border-color: var(--danger);
+  animation: colorShake 0.3s ease;
+}
 
 .newsletter-ahora-no {
   display: block;
@@ -1376,6 +1384,67 @@ img { max-width: 100%; display: block; }
 #statusOverlay .section-hint { margin-bottom: 0; }
 
 .modal-overlay.open .confirm-box { transform: scale(1); }
+
+.revisar-pedido-box {
+  text-align: left;
+  max-width: 460px;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.revisar-pedido-box h2 { margin-bottom: 14px; }
+
+.revisar-seccion {
+  padding: 10px 0;
+  border-top: 1px dashed var(--line);
+}
+
+.revisar-seccion:first-of-type { border-top: none; padding-top: 0; }
+
+.revisar-seccion-titulo {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-muted);
+  margin-bottom: 6px;
+}
+
+.revisar-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.88rem;
+  padding: 3px 0;
+}
+
+.revisar-item-detalle {
+  color: var(--ink-muted);
+  font-size: 0.8rem;
+}
+
+.revisar-totales { border-top: 1px solid var(--line); }
+
+.editar-pedido-btn {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.editar-pedido-btn:hover { border-color: var(--filament); color: var(--ink); }
+
+.revisar-pedido-botones {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.revisar-pedido-botones .editar-pedido-btn { flex: 1; }
+.revisar-pedido-botones .order-btn { flex: 2; }
 
 .confirm-icon {
   width: 44px;

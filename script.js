@@ -1247,7 +1247,7 @@ function llamarAppsScript(query) {
   });
 }
 
-async function ordenar() {
+function revisarPedido() {
   if (!CARRITO.length) return;
 
   const tipoEntrega = document.getElementById('entregaSelect').value;
@@ -1255,7 +1255,7 @@ async function ordenar() {
 
   if (tipoEntrega === 'envio') {
     const mapaCampos = {
-      nombre: 'envioNombre', telefono: 'envioTelefono', calle: 'envioCalle', interior: 'envioInterior',
+      calle: 'envioCalle', interior: 'envioInterior',
       colonia: 'envioColonia', municipio: 'envioMunicipio', estado: 'envioEstado', cp: 'envioCP',
     };
     const campos = {};
@@ -1263,9 +1263,7 @@ async function ordenar() {
       campos[clave] = document.getElementById(mapaCampos[clave]).value.trim();
     });
 
-    // El teléfono es opcional (así lo confirmó Correos de México) — el
-    // resto sí hace falta para que el paquete llegue bien.
-    const requeridos = ['nombre', 'calle', 'colonia', 'municipio', 'estado', 'cp'];
+    const requeridos = ['calle', 'colonia', 'municipio', 'estado', 'cp'];
     const faltante = requeridos.find(clave => !campos[clave]);
     if (faltante) {
       // Si nunca le dieron clic a "Validar código postal", estos campos
@@ -1281,24 +1279,104 @@ async function ordenar() {
     datosEnvio = campos;
   }
 
-  const orderBtn = document.getElementById('orderBtn');
-  orderBtn.disabled = true;
-  orderBtn.textContent = 'Generando pedido…';
+  // Datos de contacto — se piden siempre, sin importar el método de
+  // entrega. El nombre es obligatorio (además de identificar el pedido,
+  // si es envío también es el nombre de quien recibe); correo y
+  // teléfono quedan opcionales.
+  const nombreCliente = document.getElementById('contactoNombre').value.trim();
+  const correoCliente = document.getElementById('contactoCorreo').value.trim();
+  const telefonoCliente = document.getElementById('contactoTelefono').value.trim();
+
+  if (!nombreCliente) {
+    const el = document.getElementById('contactoNombre');
+    el.focus();
+    el.classList.add('campo-error');
+    setTimeout(() => el.classList.remove('campo-error'), 1500);
+    return;
+  }
+
+  // Si hay envío, el destinatario es la misma persona de contacto —
+  // se completan esos dos datos dentro de datosEnvio para que se
+  // guarden junto con el resto de la dirección.
+  if (datosEnvio) {
+    datosEnvio.nombre = nombreCliente;
+    datosEnvio.telefono = telefonoCliente;
+  }
 
   const subtotal = CARRITO.reduce((a, i) => a + calcularTotalLinea(i), 0);
   const costoEnvio = tipoEntrega === 'envio' ? CONFIG.ENVIO_COSTO : 0;
   const total = subtotal + costoEnvio;
   const items = [...CARRITO];
-  const nombreCliente = document.getElementById('nombreClienteInput').value.trim();
+
+  mostrarRevisionPedido({
+    items, total, subtotal, costoEnvio, tipoEntrega, datosEnvio,
+    nombreCliente, correoCliente, telefonoCliente,
+  });
+}
+
+function mostrarRevisionPedido(pedido) {
+  const listado = pedido.items.map(i => {
+    const detalle = [i.subproducto, i.color].filter(Boolean).join(' · ');
+    return `
+      <div class="revisar-item">
+        <span>${escapeHtml(i.nombre)}${detalle ? ` <span class="revisar-item-detalle">(${escapeHtml(detalle)})</span>` : ''} x${i.cantidad}</span>
+        <span>${formatoPrecio(calcularTotalLinea(i))}</span>
+      </div>`;
+  }).join('');
+
+  const bloqueEntrega = (pedido.tipoEntrega === 'envio' && pedido.datosEnvio)
+    ? `
+      <div class="revisar-seccion">
+        <div class="revisar-seccion-titulo">Envío nacional</div>
+        <div>${escapeHtml(pedido.datosEnvio.calle)}${pedido.datosEnvio.interior ? ' Int. ' + escapeHtml(pedido.datosEnvio.interior) : ''}</div>
+        <div>Col. ${escapeHtml(pedido.datosEnvio.colonia)}</div>
+        <div>${escapeHtml(pedido.datosEnvio.municipio)}, ${escapeHtml(pedido.datosEnvio.estado)} — CP ${escapeHtml(pedido.datosEnvio.cp)}</div>
+      </div>`
+    : `<div class="revisar-seccion"><div class="revisar-seccion-titulo">Entrega</div><div>Recoger en punto de encuentro (CDMX)</div></div>`;
+
+  const contenido = document.getElementById('revisarPedidoContenido');
+  contenido.innerHTML = `
+    <div class="revisar-seccion">
+      <div class="revisar-seccion-titulo">Artículos</div>
+      ${listado}
+    </div>
+    ${bloqueEntrega}
+    <div class="revisar-seccion">
+      <div class="revisar-seccion-titulo">Contacto</div>
+      <div>${escapeHtml(pedido.nombreCliente)}</div>
+      ${pedido.correoCliente ? `<div>${escapeHtml(pedido.correoCliente)}</div>` : ''}
+      ${pedido.telefonoCliente ? `<div>${escapeHtml(pedido.telefonoCliente)}</div>` : ''}
+    </div>
+    <div class="revisar-seccion revisar-totales">
+      <div class="cart-total"><span>Subtotal</span><span>${formatoPrecio(pedido.subtotal)}</span></div>
+      ${pedido.costoEnvio ? `<div class="cart-total"><span>Envío</span><span>${formatoPrecio(pedido.costoEnvio)}</span></div>` : ''}
+      <div class="cart-total cart-total-final"><span>Total</span><span>${formatoPrecio(pedido.total)}</span></div>
+    </div>
+  `;
+
+  document.getElementById('revisarConfirmarBtn').onclick = () => confirmarPedido(pedido);
+  document.getElementById('revisarPedidoOverlay').classList.add('open');
+}
+
+function cerrarRevisionPedido() {
+  document.getElementById('revisarPedidoOverlay').classList.remove('open');
+}
+
+async function confirmarPedido(pedido) {
+  const btn = document.getElementById('revisarConfirmarBtn');
+  btn.disabled = true;
+  btn.textContent = 'Generando pedido…';
 
   try {
     const payload = {
-      items,
-      total,
-      nombre: nombreCliente,
-      entrega: tipoEntrega,
-      costoEnvio,
-      envio: datosEnvio,
+      items: pedido.items,
+      total: pedido.total,
+      nombre: pedido.nombreCliente,
+      correo: pedido.correoCliente,
+      telefono: pedido.telefonoCliente,
+      entrega: pedido.tipoEntrega,
+      costoEnvio: pedido.costoEnvio,
+      envio: pedido.datosEnvio,
     };
     const query = `data=${encodeURIComponent(JSON.stringify(payload))}`;
     const data = await llamarAppsScript(query);
@@ -1308,9 +1386,9 @@ async function ordenar() {
     registrarEventoGA('purchase', {
       transaction_id: data.orderId,
       currency: CONFIG.MONEDA,
-      value: total,
-      shipping: costoEnvio,
-      items: items.map(i => ({
+      value: pedido.total,
+      shipping: pedido.costoEnvio,
+      items: pedido.items.map(i => ({
         item_id: i.sku,
         item_name: i.nombre,
         item_variant: i.color || undefined,
@@ -1323,17 +1401,20 @@ async function ordenar() {
     guardarCarrito();
     renderCarrito();
     renderCatalogo();
+    cerrarRevisionPedido();
     cerrarCarrito();
 
-    document.getElementById('nombreClienteInput').value = '';
+    document.getElementById('contactoNombre').value = '';
+    document.getElementById('contactoCorreo').value = '';
+    document.getElementById('contactoTelefono').value = '';
 
-    mostrarConfirmacion(data.orderId, total, items, nombreCliente, tipoEntrega, datosEnvio, costoEnvio);
+    mostrarConfirmacion(data.orderId, pedido.total, pedido.items, pedido.nombreCliente, pedido.tipoEntrega, pedido.datosEnvio, pedido.costoEnvio);
   } catch (err) {
     console.error(err);
     alert('No se pudo generar el número de orden automáticamente. Revisa la URL de Apps Script en script.js. Tu pedido no se perdió, sigue en el carrito.');
   } finally {
-    orderBtn.disabled = false;
-    orderBtn.textContent = 'Ordenar por WhatsApp';
+    btn.disabled = false;
+    btn.textContent = 'Confirmar y ordenar';
   }
 }
 
@@ -1626,9 +1707,15 @@ document.getElementById('validarCPBtn').addEventListener('click', async () => {
       const listaColonias = document.getElementById('listaColoniasCP');
       listaColonias.innerHTML = (data.colonias || []).map(c => `<option value="${escapeAttr(c)}">`).join('');
       const coloniaInput = document.getElementById('envioColonia');
-      if (!coloniaInput.value && data.colonias && data.colonias.length === 1) {
+      // Siempre se actualiza con el CP nuevo, no solo la primera vez que
+      // se valida — si hay una sola colonia posible, se llena sola; si
+      // hay varias, se limpia para que elijan de las sugerencias en vez
+      // de dejar puesta la de un código postal anterior.
+      if (data.colonias && data.colonias.length === 1) {
         coloniaInput.value = data.colonias[0];
         marcarAutollenado(coloniaInput);
+      } else {
+        coloniaInput.value = '';
       }
     }
     // Si el código postal no se encontró o el servicio falló, se revela
@@ -1643,7 +1730,12 @@ document.getElementById('validarCPBtn').addEventListener('click', async () => {
   }
 });
 
-document.getElementById('orderBtn').addEventListener('click', ordenar);
+document.getElementById('orderBtn').addEventListener('click', revisarPedido);
+document.getElementById('revisarPedidoClose').addEventListener('click', cerrarRevisionPedido);
+document.getElementById('revisarEditarBtn').addEventListener('click', cerrarRevisionPedido);
+document.getElementById('revisarPedidoOverlay').addEventListener('click', (ev) => {
+  if (ev.target.id === 'revisarPedidoOverlay') cerrarRevisionPedido();
+});
 document.getElementById('modalClose').addEventListener('click', cerrarModal);
 document.getElementById('modalOverlay').addEventListener('click', (ev) => {
   if (ev.target.id === 'modalOverlay') cerrarModal();

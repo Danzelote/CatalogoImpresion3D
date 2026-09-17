@@ -197,6 +197,19 @@
   </div>
 </div>
 
+<!-- Revisar pedido completo antes de registrarlo -->
+<div class="modal-overlay" id="revisarPedidoOverlay">
+  <div class="confirm-box revisar-pedido-box">
+    <button class="modal-close modal-close-static" id="revisarPedidoClose">&times;</button>
+    <h2>Revisa tu pedido</h2>
+    <div id="revisarPedidoContenido"></div>
+    <div class="revisar-pedido-botones">
+      <button class="editar-pedido-btn" id="revisarEditarBtn">Editar</button>
+      <button class="order-btn" id="revisarConfirmarBtn">Confirmar y ordenar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Confirmación antes de abrir WhatsApp -->
 <div class="modal-overlay" id="confirmOverlay">
   <div class="confirm-box">
@@ -242,7 +255,6 @@
 
     <div class="direccion-envio-wrap" id="direccionEnvioWrap" style="display:none;">
       <p class="section-hint" id="envioInfoHint"></p>
-      <input type="text" id="envioNombre" placeholder="Nombre de quien recibe" autocomplete="name">
 
       <div class="direccion-fila-2col direccion-fila-calle">
         <div>
@@ -270,8 +282,6 @@
 
         <input type="text" id="envioColonia" placeholder="Colonia" list="listaColoniasCP">
         <datalist id="listaColoniasCP"></datalist>
-
-        <input type="tel" id="envioTelefono" placeholder="Teléfono (opcional, para avisos de la paquetería)" autocomplete="tel" inputmode="tel">
       </div>
     </div>
 
@@ -288,11 +298,21 @@
       <span id="cartTotal">$0</span>
     </div>
 
-    <div class="nombre-cliente-wrap">
-      <input type="text" id="nombreClienteInput" placeholder="Tu nombre (opcional)" autocomplete="name">
+    <div class="datos-contacto-wrap">
+      <p class="section-hint">Tus datos (para tu pedido y, si eliges envío, también es a quien se le entrega)</p>
+      <input type="text" id="contactoNombre" placeholder="Tu nombre" autocomplete="name">
+      <div class="direccion-fila-2col">
+        <div>
+          <input type="email" id="contactoCorreo" placeholder="Correo (opcional)" autocomplete="email" inputmode="email">
+        </div>
+        <div>
+          <input type="tel" id="contactoTelefono" placeholder="Teléfono (opcional)" autocomplete="tel" inputmode="tel">
+        </div>
+      </div>
     </div>
-    <button class="order-btn" id="orderBtn">Ordenar por WhatsApp</button>
-    <div class="order-hint">Se abrirá WhatsApp con tu pedido ya redactado.</div>
+
+    <button class="order-btn" id="orderBtn">Revisar pedido</button>
+    <div class="order-hint">Verás tu pedido completo antes de mandarlo por WhatsApp.</div>
   </div>
 </aside>
 
