@@ -788,6 +788,17 @@ img { max-width: 100%; display: block; }
   animation: colorShake 0.3s ease;
 }
 
+.checkbox-novedades {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+
+.checkbox-novedades input { width: auto; flex-shrink: 0; }
+
 .newsletter-ahora-no {
   display: block;
   margin: 10px auto 0;

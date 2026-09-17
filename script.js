@@ -1280,15 +1280,25 @@ function revisarPedido() {
   }
 
   // Datos de contacto — se piden siempre, sin importar el método de
-  // entrega. El nombre es obligatorio (además de identificar el pedido,
-  // si es envío también es el nombre de quien recibe); correo y
-  // teléfono quedan opcionales.
+  // entrega. El nombre siempre es obligatorio; el correo se vuelve
+  // obligatorio también SOLO si es envío (es la única forma de avisar
+  // cuando se manda el paquete, con su número de rastreo). El teléfono
+  // se queda opcional en los dos casos.
   const nombreCliente = document.getElementById('contactoNombre').value.trim();
   const correoCliente = document.getElementById('contactoCorreo').value.trim();
   const telefonoCliente = document.getElementById('contactoTelefono').value.trim();
+  const recibirNovedades = document.getElementById('contactoNovedades').checked;
 
   if (!nombreCliente) {
     const el = document.getElementById('contactoNombre');
+    el.focus();
+    el.classList.add('campo-error');
+    setTimeout(() => el.classList.remove('campo-error'), 1500);
+    return;
+  }
+
+  if (tipoEntrega === 'envio' && !correoCliente) {
+    const el = document.getElementById('contactoCorreo');
     el.focus();
     el.classList.add('campo-error');
     setTimeout(() => el.classList.remove('campo-error'), 1500);
@@ -1310,7 +1320,7 @@ function revisarPedido() {
 
   mostrarRevisionPedido({
     items, total, subtotal, costoEnvio, tipoEntrega, datosEnvio,
-    nombreCliente, correoCliente, telefonoCliente,
+    nombreCliente, correoCliente, telefonoCliente, recibirNovedades,
   });
 }
 
@@ -1374,6 +1384,7 @@ async function confirmarPedido(pedido) {
       nombre: pedido.nombreCliente,
       correo: pedido.correoCliente,
       telefono: pedido.telefonoCliente,
+      recibirNovedades: pedido.recibirNovedades,
       entrega: pedido.tipoEntrega,
       costoEnvio: pedido.costoEnvio,
       envio: pedido.datosEnvio,
@@ -1407,6 +1418,7 @@ async function confirmarPedido(pedido) {
     document.getElementById('contactoNombre').value = '';
     document.getElementById('contactoCorreo').value = '';
     document.getElementById('contactoTelefono').value = '';
+    document.getElementById('contactoNovedades').checked = false;
 
     mostrarConfirmacion(data.orderId, pedido.total, pedido.items, pedido.nombreCliente, pedido.tipoEntrega, pedido.datosEnvio, pedido.costoEnvio);
   } catch (err) {
@@ -1630,6 +1642,13 @@ document.getElementById('entregaSelect').addEventListener('change', (ev) => {
   const esEnvio = ev.target.value === 'envio';
   document.getElementById('direccionEnvioWrap').style.display = esEnvio ? 'flex' : 'none';
   document.getElementById('cartEnvioRow').style.display = esEnvio ? 'flex' : 'none';
+
+  // El correo es obligatorio solo si eligen envío — es lo único que
+  // permite avisarles cuando se manda su paquete, con su número de
+  // rastreo. Para recolección se queda opcional.
+  const correoInput = document.getElementById('contactoCorreo');
+  correoInput.placeholder = esEnvio ? 'Correo (obligatorio para envíos)' : 'Correo (opcional)';
+
   renderCarrito();
 });
 

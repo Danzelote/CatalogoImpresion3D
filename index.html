@@ -299,7 +299,7 @@
     </div>
 
     <div class="datos-contacto-wrap">
-      <p class="section-hint">Tus datos (para tu pedido y, si eliges envío, también es a quien se le entrega)</p>
+      <p class="section-hint" id="contactoInfoHint">Tus datos (para tu pedido y, si eliges envío, también es a quien se le entrega)</p>
       <input type="text" id="contactoNombre" placeholder="Tu nombre" autocomplete="name">
       <div class="direccion-fila-2col">
         <div>
@@ -309,6 +309,10 @@
           <input type="tel" id="contactoTelefono" placeholder="Teléfono (opcional)" autocomplete="tel" inputmode="tel">
         </div>
       </div>
+      <label class="checkbox-novedades">
+        <input type="checkbox" id="contactoNovedades">
+        Recibir novedades y promociones por correo
+      </label>
     </div>
 
     <button class="order-btn" id="orderBtn">Revisar pedido</button>
