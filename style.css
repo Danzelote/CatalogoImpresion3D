@@ -548,9 +548,15 @@ img { max-width: 100%; display: block; }
   line-height: 1;
 }
 
-.cart-items {
+.cart-scroll {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.cart-items {
   padding: 12px 20px;
   display: flex;
   flex-direction: column;
