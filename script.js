@@ -1434,11 +1434,25 @@ function mostrarConfirmacion(orderId, total, items, nombreCliente, tipoEntrega, 
   document.getElementById('confirmText').textContent =
     `Tu pedido quedó guardado con el número de orden ${orderId}.`;
 
+  const esEnvio = tipoEntrega === 'envio';
+  const warning = document.getElementById('confirmWhatsappWarning');
   const btn = document.getElementById('confirmWhatsappBtn');
+  const avisoEnvio = document.getElementById('confirmEnvioAviso');
+  const cerrarBtn = document.getElementById('confirmCerrarBtn');
+
+  // En envío nacional ya tenemos toda la info (dirección, correo) —
+  // no hace falta que el cliente además mande un WhatsApp; en recolección
+  // sigue siendo la forma de coordinar el punto de encuentro.
+  warning.style.display = esEnvio ? 'none' : '';
+  btn.style.display = esEnvio ? 'none' : '';
+  avisoEnvio.style.display = esEnvio ? '' : 'none';
+  cerrarBtn.style.display = esEnvio ? '' : 'none';
+
   btn.onclick = () => {
     abrirWhatsApp(orderId, total, items, nombreCliente, tipoEntrega, datosEnvio, costoEnvio);
     cerrarConfirmacion();
   };
+  cerrarBtn.onclick = () => cerrarConfirmacion();
 
   document.getElementById('confirmOverlay').classList.add('open');
 }
