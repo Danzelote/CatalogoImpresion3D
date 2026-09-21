@@ -1650,7 +1650,7 @@ document.getElementById('cartOverlay').addEventListener('click', cerrarCarrito);
 // pueden meter directo en el HTML estático, ese archivo no ejecuta JS).
 document.getElementById('opcionEnvio').textContent = `Envío nacional (+${formatoPrecio(CONFIG.ENVIO_COSTO)})`;
 document.getElementById('envioInfoHint').textContent =
-  `${CONFIG.ENVIO_PAQUETERIA} — ${CONFIG.ENVIO_TIEMPO}.`;
+  `${CONFIG.ENVIO_PAQUETERIA} — ${CONFIG.ENVIO_TIEMPO}. ${CONFIG.TIEMPO_IMPRESION}`;
 
 document.getElementById('entregaSelect').addEventListener('change', (ev) => {
   const esEnvio = ev.target.value === 'envio';
