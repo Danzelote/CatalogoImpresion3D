@@ -65,4 +65,7 @@ const CONFIG = {
   ENVIO_COSTO: 80,
   ENVIO_PAQUETERIA: 'Correos de México (paquetería tradicional)',
   ENVIO_TIEMPO: '10 a 15 días hábiles',
+  TIEMPO_IMPRESION: 'Los pedidos tardan de 2 a 3 días en imprimirse antes de enviarse o entregarse.',
+};
+   
 };
