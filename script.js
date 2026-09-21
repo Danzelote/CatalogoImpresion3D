@@ -1440,13 +1440,13 @@ function mostrarConfirmacion(orderId, total, items, nombreCliente, tipoEntrega, 
   const avisoEnvio = document.getElementById('confirmEnvioAviso');
   const cerrarBtn = document.getElementById('confirmCerrarBtn');
 
-  // En envío nacional ya tenemos toda la info (dirección, correo) —
-  // no hace falta que el cliente además mande un WhatsApp; en recolección
-  // sigue siendo la forma de coordinar el punto de encuentro.
-  warning.style.display = esEnvio ? 'none' : '';
-  btn.style.display = esEnvio ? 'none' : '';
-  avisoEnvio.style.display = esEnvio ? '' : 'none';
-  cerrarBtn.style.display = esEnvio ? '' : 'none';
+  // Se manda WhatsApp siempre (envío o recolección): en envío además
+  // sirve para que el cliente mande el comprobante de pago en la misma
+  // conversación.
+  warning.style.display = '';
+  btn.style.display = '';
+  avisoEnvio.style.display = 'none';
+  cerrarBtn.style.display = 'none';
 
   btn.onclick = () => {
     abrirWhatsApp(orderId, total, items, nombreCliente, tipoEntrega, datosEnvio, costoEnvio);
@@ -1487,11 +1487,16 @@ function abrirWhatsApp(orderId, total, items, nombreCliente, tipoEntrega, datosE
     bloqueEntrega = 'Recojo en punto de encuentro (CDMX)';
   }
 
+  const notaComprobante = tipoEntrega === 'envio'
+    ? '\n\nEn un momento te mando el comprobante de mi transferencia 📎'
+    : '';
+
   const mensaje =
     `${saludo}\n\n` +
     `${listado}\n\n` +
     `${bloqueEntrega}\n\n` +
-    `Total: ${formatoPrecio(total)}`;
+    `Total: ${formatoPrecio(total)}` +
+    notaComprobante;
 
   const url = `https://wa.me/${CONFIG.WHATSAPP_NUMBER}?text=${encodeURIComponent(mensaje)}`;
   window.open(url, '_blank');
