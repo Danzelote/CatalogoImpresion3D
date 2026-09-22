@@ -704,6 +704,11 @@ img { max-width: 100%; display: block; }
   border-radius: 6px;
 }
 
+.entrega-select-wrap select.campo-error {
+  border-color: var(--danger);
+  animation: colorShake 0.3s ease;
+}
+
 .direccion-envio-wrap {
   padding: 10px 0;
   display: flex;
