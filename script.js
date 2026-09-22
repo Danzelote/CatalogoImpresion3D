@@ -1250,7 +1250,16 @@ function llamarAppsScript(query) {
 function revisarPedido() {
   if (!CARRITO.length) return;
 
-  const tipoEntrega = document.getElementById('entregaSelect').value;
+  const entregaSelect = document.getElementById('entregaSelect');
+  const tipoEntrega = entregaSelect.value;
+
+  if (!tipoEntrega) {
+    entregaSelect.classList.add('campo-error');
+    entregaSelect.focus();
+    setTimeout(() => entregaSelect.classList.remove('campo-error'), 1500);
+    return;
+  }
+
   let datosEnvio = null;
 
   if (tipoEntrega === 'envio') {
