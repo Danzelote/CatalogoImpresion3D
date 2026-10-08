@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Pedidos 3D</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="https://sanpedro3d.shop/panel/icono-panel.png">
+<link rel="apple-touch-icon" href="https://sanpedro3d.shop/panel/icono-panel.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Pedidos 3D">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#17191c">
+<style>
+  body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+         background:#17191c; color:#e9eaec; font-family:-apple-system,system-ui,sans-serif; text-align:center; padding:24px; box-sizing:border-box; }
+  img { width:96px; height:96px; border-radius:22px; }
+  h1 { font-size:1.2rem; margin:16px 0 8px; }
+  p { color:#9aa0a6; font-size:.9rem; line-height:1.5; max-width:320px; margin:0 auto 16px; }
+  a.btn { display:inline-block; background:#ff6a1a; color:#fff; text-decoration:none; padding:12px 22px; border-radius:12px; font-weight:600; }
+</style>
+</head>
+<body>
+<div>
+  <img src="https://sanpedro3d.shop/panel/icono-panel.png" alt="">
+  <h1>Pedidos — San Pedro 3D</h1>
+  <p id="msg">Para tener el ícono en tu iPhone: toca Compartir → "Agregar a pantalla de inicio". Desde ahí se abre directo el panel.</p>
+  <a class="btn" id="abrir" href="#">Abrir panel</a>
+</div>
+<script>
+  // Pega aquí la URL de tu panel (la que termina en /exec).
+  var PANEL_URL = 'https://script.google.com/macros/s/AKfycbx2EmS8pGmKHc1ipHH5M77aFelf-aJfNPDaOkoNdFGsl2MhdRP9A2hSZeLp79naSyl-/exec';
+
+  document.getElementById('abrir').href = PANEL_URL;
+  // Si ya se abrió desde el ícono de la pantalla de inicio, pasa directo
+  // al panel; si se abre en Safari normal, muestra las instrucciones.
+  var instalada = window.navigator.standalone === true ||
+                  window.matchMedia('(display-mode: standalone)').matches;
+  if (instalada && PANEL_URL.indexOf('http') === 0) {
+    document.getElementById('msg').textContent = 'Abriendo panel…';
+    location.replace(PANEL_URL);
+  }
+</script>
+</body>
+</html>
