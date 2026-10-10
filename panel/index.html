@@ -32,12 +32,23 @@
   // Pega aquí la URL de tu panel (la que termina en /exec).
   var PANEL_URL = 'https://script.google.com/macros/s/AKfycbx2EmS8pGmKHc1ipHH5M77aFelf-aJfNPDaOkoNdFGsl2MhdRP9A2hSZeLp79naSyl-/exec';
 
-  document.getElementById('abrir').href = PANEL_URL;
-  // Si ya se abrió desde el ícono de la pantalla de inicio, pasa directo
-  // al panel; si se abre en Safari normal, muestra las instrucciones.
+  var abrir = document.getElementById('abrir');
+  abrir.href = PANEL_URL;
+
+  function guardado() { try { return localStorage.getItem('panelOk') === '1'; } catch (e) { return false; } }
+  function recordar() { try { localStorage.setItem('panelOk', '1'); } catch (e) {} }
+
+  // Al tocar "Abrir panel" se recuerda en este dispositivo, y las
+  // siguientes veces pasa directo al panel sin mostrar el botón.
+  abrir.addEventListener('click', recordar);
+
+  // Si quieres volver a ver la pantalla de instrucciones, abre
+  // sanpedro3d.shop/panel/?instalar
+  var forzarInstrucciones = location.search.indexOf('instalar') !== -1;
   var instalada = window.navigator.standalone === true ||
                   window.matchMedia('(display-mode: standalone)').matches;
-  if (instalada && PANEL_URL.indexOf('http') === 0) {
+
+  if (!forzarInstrucciones && PANEL_URL.indexOf('http') === 0 && (instalada || guardado())) {
     document.getElementById('msg').textContent = 'Abriendo panel…';
     location.replace(PANEL_URL);
   }
