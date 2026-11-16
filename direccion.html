@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Tu domicilio de envío — San Pedro 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root { --bed:#17191c; --panel:#202327; --ink:#ecebe6; --muted:#9a9da3; --accent:#ff6a3d; --line:#34383e; --danger:#e0524a; --ok:#2dd4bf; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bed); color:var(--ink); font-family:'Inter',Arial,sans-serif; line-height:1.5; }
+  main { max-width:520px; margin:0 auto; padding:28px 16px 48px; }
+  h1 { font-family:'Space Grotesk',sans-serif; font-size:1.5rem; margin:0 0 6px; }
+  .marca { color:var(--accent); font-family:'Space Grotesk',sans-serif; font-weight:700; margin-bottom:18px; }
+  .muted { color:var(--muted); font-size:0.92rem; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:18px; margin-top:16px; }
+  label { display:block; font-size:0.85rem; color:var(--muted); margin:12px 0 4px; }
+  input { width:100%; padding:11px 12px; border-radius:8px; border:1px solid var(--line); background:var(--bed); color:var(--ink); font:inherit; }
+  input:focus { outline:2px solid var(--accent); outline-offset:1px; }
+  .fila { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  @media (max-width:420px) { .fila { grid-template-columns:1fr; } }
+  button, .btn { display:inline-block; margin-top:18px; width:100%; padding:13px; border:0; border-radius:8px; background:var(--accent); color:#fff; font:600 1rem 'Inter',sans-serif; cursor:pointer; text-align:center; text-decoration:none; }
+  button:disabled { opacity:0.6; cursor:default; }
+  .aviso { border-radius:8px; padding:12px 14px; margin-top:14px; font-size:0.93rem; }
+  .aviso.alerta { background:#3a1f1d; border:1px solid var(--danger); color:#ffd7d3; }
+  .aviso.ok { background:#12332f; border:1px solid var(--ok); color:#c9fff7; }
+  .error { color:var(--danger); font-size:0.9rem; margin-top:10px; min-height:1.2em; }
+  [hidden] { display:none !important; }
+</style>
+</head>
+<body>
+<main>
+  <div class="marca">San Pedro 3D</div>
+  <h1>Tu domicilio de envío</h1>
+  <p class="muted" id="intro">Cargando tu pedido…</p>
+
+  <div id="avisoUltima" class="aviso alerta" hidden>
+    <strong>Última oportunidad:</strong> tu pedido ya está listo para salir. Si algo de tu domicilio está mal, corrígelo ahora: en cuanto salga tu pedido ya no se podrá cambiar.
+  </div>
+
+  <form id="forma" class="card" hidden novalidate>
+    <label for="destNombre">Nombre de quien recibe</label>
+    <input id="destNombre" maxlength="80" autocomplete="name">
+    <label for="calle">Calle y número *</label>
+    <input id="calle" maxlength="120" autocomplete="address-line1" required>
+    <div class="fila">
+      <div><label for="interior">Número interior</label><input id="interior" maxlength="30"></div>
+      <div><label for="cp">Código postal *</label><input id="cp" inputmode="numeric" maxlength="5" autocomplete="postal-code" required></div>
+    </div>
+    <label for="colonia">Colonia *</label>
+    <input id="colonia" maxlength="80" required>
+    <div class="fila">
+      <div><label for="municipio">Delegación o municipio *</label><input id="municipio" maxlength="80" required></div>
+      <div><label for="estado">Estado *</label><input id="estado" maxlength="60" required></div>
+    </div>
+    <div class="error" id="error" role="alert"></div>
+    <button type="submit" id="guardar">Guardar domicilio</button>
+    <p class="muted" style="margin:12px 0 0;">Si está todo bien, no tienes que hacer nada.</p>
+  </form>
+
+  <div id="listo" class="aviso ok" hidden>
+    <strong>¡Listo!</strong> Tu domicilio quedó actualizado. Gracias, te avisaremos por correo de cada avance.
+  </div>
+  <div id="cerrado" class="card" hidden>
+    <p id="cerradoTxt" style="margin-top:0;"></p>
+    <a class="btn" id="wa" target="_blank" rel="noopener">Escríbenos por WhatsApp</a>
+  </div>
+</main>
+
+<script src="config.js"></script>
+<script>
+(function () {
+  var token = (new URLSearchParams(location.search).get('t') || '').trim();
+  var $ = function (id) { return document.getElementById(id); };
+  var campos = ['destNombre', 'calle', 'interior', 'colonia', 'municipio', 'estado', 'cp'];
+
+  function jsonp(params) {
+    return new Promise(function (resolve, reject) {
+      var cb = 'cb_' + Date.now() + '_' + Math.floor(Math.random() * 1e6);
+      var s = document.createElement('script');
+      var t = setTimeout(function () { limpiar(); reject(new Error('timeout')); }, 20000);
+      function limpiar() { clearTimeout(t); delete window[cb]; s.remove(); }
+      window[cb] = function (r) { limpiar(); resolve(r); };
+      s.onerror = function () { limpiar(); reject(new Error('red')); };
+      s.src = CONFIG.APPS_SCRIPT_URL + '?callback=' + cb + '&' + params;
+      document.body.appendChild(s);
+    });
+  }
+  function cerrar(msg) {
+    $('intro').hidden = true; $('forma').hidden = true; $('avisoUltima').hidden = true;
+    $('cerradoTxt').textContent = msg;
+    $('wa').href = 'https://wa.me/' + CONFIG.WHATSAPP_NUMBER;
+    $('cerrado').hidden = false;
+  }
+
+  if (!/^[a-f0-9]{32}$/.test(token)) { cerrar('Este link no es válido. Abre el link que viene en tu correo.'); return; }
+
+  jsonp('accion=direccion&t=' + token).then(function (r) {
+    if (!r || !r.ok || !r.encontrado) { cerrar('No encontramos tu pedido con este link. Escríbenos y lo revisamos.'); return; }
+    if (!r.editable) {
+      cerrar(r.motivo === 'sinenvio'
+        ? 'Este pedido no es con envío a domicilio.'
+        : 'Tu pedido ya salió o ya no admite cambios de domicilio. Si algo está mal, escríbenos por WhatsApp.');
+      return;
+    }
+    $('intro').textContent = 'Pedido ' + r.orden + '. Revisa que tu domicilio esté correcto y corrígelo si hace falta.';
+    campos.forEach(function (c) { $(c).value = (r.direccion && r.direccion[c]) || ''; });
+    $('avisoUltima').hidden = !r.ultimaOportunidad;
+    $('forma').hidden = false;
+  }).catch(function () { cerrar('No pudimos cargar tu pedido. Intenta de nuevo en unos minutos o escríbenos por WhatsApp.'); });
+
+  $('cp').addEventListener('input', function () { this.value = this.value.replace(/\D/g, '').slice(0, 5); });
+
+  $('forma').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    $('error').textContent = '';
+    var d = { token: token };
+    campos.forEach(function (c) { d[c] = $(c).value.trim(); });
+    if (!d.calle || !d.colonia || !d.municipio || !d.estado) { $('error').textContent = 'Completa calle, colonia, municipio y estado.'; return; }
+    if (!/^\d{5}$/.test(d.cp)) { $('error').textContent = 'El código postal debe tener 5 dígitos.'; return; }
+    $('guardar').disabled = true; $('guardar').textContent = 'Guardando…';
+    jsonp('accion=guardarDireccion&data=' + encodeURIComponent(JSON.stringify(d))).then(function (r) {
+      if (r && r.ok) { $('forma').hidden = true; $('avisoUltima').hidden = true; $('intro').hidden = true; $('listo').hidden = false; }
+      else { $('error').textContent = (r && r.error) || 'No se pudo guardar.'; $('guardar').disabled = false; $('guardar').textContent = 'Guardar domicilio'; }
+    }).catch(function () { $('error').textContent = 'No se pudo guardar. Revisa tu conexión e intenta otra vez.'; $('guardar').disabled = false; $('guardar').textContent = 'Guardar domicilio'; });
+  });
+})();
+</script>
+</body>
+</html>
